@@ -132,7 +132,7 @@ export default function NotificationDropdown({
                                 >
                                     <div className="flex gap-3">
                                         <div className="pt-1.5">
-                                            <span className="block w-2 h-2 rounded-full bg-[#00CEC9]" />
+                                            <span className="block w-2 h-2 rounded-full bg-[#00CFFF]" />
                                         </div>
 
                                         <div className="min-w-0 flex-1">

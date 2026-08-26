@@ -72,13 +72,13 @@ export default function CreateWorkspace({
                     placeholder="e.g. Sales Pipeline"
                     autoFocus
                     disabled={creating}
-                    className="w-full border border-slate-200 rounded px-3 py-2.5 text-sm text-slate-800 mb-4 outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/15 transition disabled:bg-slate-50"
+                    className="w-full border border-slate-200 rounded px-3 py-2.5 text-sm text-slate-800 mb-4 outline-none focus:border-[#6A00FF] focus:ring-2 focus:ring-[#6A00FF]/15 transition disabled:bg-slate-50"
                 />
 
                 <button
                     onClick={createWorkspace}
                     disabled={creating || !workspaceName.trim()}
-                    className="w-full bg-[#6C5CE7] text-white py-2.5 rounded text-sm font-medium hover:bg-[#5b4bd6] disabled:opacity-60 transition cursor-pointer"
+                    className="w-full bg-[#6A00FF] text-white py-2.5 rounded text-sm font-medium hover:bg-[#5800D6] disabled:opacity-60 transition cursor-pointer"
                 >
                     {creating ? "Creating..." : "Create Workspace"}
                 </button>

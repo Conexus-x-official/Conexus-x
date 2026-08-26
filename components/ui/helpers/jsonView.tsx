@@ -16,7 +16,7 @@ function classForToken(token: string) {
     if (token.startsWith("\"")) {
         // A trailing colon means this string is a key, not a value.
         return token.trimEnd().endsWith(":")
-            ? "text-[#6C5CE7]"
+            ? "text-[#6A00FF]"
             : "text-emerald-600";
     }
 

@@ -10,6 +10,15 @@ export interface AuthUser {
   avatar?: string;
   /** The presence the user picked — kept here so the dot paints before any fetch. */
   status?: UserStatus;
+  /**
+   * UI settings stored on the ACCOUNT, mirrored here so the first paint needs
+   * no round trip. The server is the truth (see PATCH /auth/preferences); this
+   * copy is what /auth/me and login refresh on arrival.
+   */
+  preferences?: {
+    /** Rail mode for the main navigation sidebar. */
+    sidebarCollapsed?: boolean;
+  };
 }
 
 const TOKEN_KEY = "crm_auth_token";
@@ -81,4 +90,55 @@ export function updateUser(patch: Partial<AuthUser>): AuthUser | null {
   }
 
   return next;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Reading the signed-in user from React
+ * ------------------------------------------------------------------ */
+
+/**
+ * getUser() parses fresh on every call, so it hands back a NEW object each
+ * time. useSyncExternalStore compares snapshots by identity and would spin
+ * forever on that, so the parse is cached against the raw stored string and
+ * only re-runs when that string actually changes.
+ */
+let cachedUserRaw: string | null = null;
+let cachedUser: AuthUser | null = null;
+
+/** Client snapshot — stable between real changes. */
+export function readUser(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+
+  let raw: string | null;
+  try {
+    raw = localStorage.getItem(USER_KEY);
+  } catch {
+    return null;
+  }
+
+  if (raw !== cachedUserRaw) {
+    cachedUserRaw = raw;
+    cachedUser = raw ? getUser() : null;
+  }
+
+  return cachedUser;
+}
+
+/** Server snapshot — always null, so the first client render agrees with it. */
+export function readUserServer(): AuthUser | null {
+  return null;
+}
+
+export function subscribeUser(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => { };
+
+  // The same event updateUser() already raises after an avatar upload, plus
+  // `storage` for a sign-in that happened in another tab.
+  window.addEventListener("crm:user-updated", onChange);
+  window.addEventListener("storage", onChange);
+
+  return () => {
+    window.removeEventListener("crm:user-updated", onChange);
+    window.removeEventListener("storage", onChange);
+  };
 }

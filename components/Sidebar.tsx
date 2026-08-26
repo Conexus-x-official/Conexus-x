@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -13,7 +14,6 @@ import {
     useCreateWorkspaceMutation
 } from "@/store/api/workspaces.api";
 import { useGetModulesQuery } from "@/store/api/modules.api";
-import { RiAddLine } from "react-icons/ri";
 import {
     HiOutlineXMark,
     HiOutlineExclamationTriangle,
@@ -30,10 +30,13 @@ import {
 import logo from "@/app/assets/Logo.png";
 import {
     DEFAULT_WORKSPACE_ICON,
-    WORKSPACE_SECTION_ICON,
     WorkspaceIcon,
     searchWorkspaceIcons
 } from "@/lib/workspaceIcons";
+import WorkspaceSwitcher from "./ui/menu/workspaceSwitcher";
+import { useUpdatePreferencesMutation } from "@/store/api/preferences.api";
+import { readUser, readUserServer, subscribeUser, updateUser } from "@/lib/auth";
+import { toast } from "./ui/toast";
 import type { Workspace } from "@/store/types";
 
 /**
@@ -57,8 +60,16 @@ import type { Workspace } from "@/store/types";
  * carrying identity nowhere else in the app repeated it.
  */
 
-/** Remembers rail mode across navigations, the way ChatGPT's panel does. */
-const SIDEBAR_KEY = "crm_sidebar_collapsed";
+/**
+ * The two widths, in pixels rather than as `w-72` / `w-[68px]`.
+ *
+ * Animating a Tailwind class is not a thing: the transition needs a number to
+ * interpolate toward, and the same number has to pin the CONTENT so it does
+ * not re-wrap on every frame while the box moves — see AiSidebar, which
+ * animates the same way for the same reason.
+ */
+const FULL_WIDTH = 288;
+const RAIL_WIDTH = 68;
 
 /**
  * One row of the collapsed rail: a square target that still navigates. The name
@@ -82,7 +93,7 @@ function RailButton({
             title={label}
             aria-label={label}
             className={`flex h-9 w-9 items-center justify-center rounded-lg transition cursor-pointer ${active
-                ? "bg-accent/10 text-accent"
+                ? "nav-glass text-foreground"
                 : "text-slate-600 hover:bg-control/60 hover:text-slate-900"
                 }`}
         >
@@ -187,30 +198,52 @@ export default function Sidebar() {
 
     const [openModule, setOpenModule] = useState(true);
 
-    const [open, setOpen] = useState(true);
+    /**
+     * Rail mode, read from the SIGNED-IN ACCOUNT rather than from this
+     * component's own state.
+     *
+     * This is what fixes the flicker. Every page renders its own <Sidebar />,
+     * so a route change unmounts one and mounts another — and the old version
+     * started expanded and corrected itself from localStorage in an effect,
+     * which meant a collapsed sidebar visibly swung open and shut on every
+     * single navigation. Read through the external store, a soft navigation
+     * has no hydration to wait for: the first render of the new instance
+     * already calls readUser() and gets the right answer, so there is nothing
+     * to correct and nothing to see.
+     *
+     * The value lives on the user (mirrored into localStorage by lib/auth.ts,
+     * refreshed from the server by /auth/me and login), so it also follows the
+     * person to another browser instead of being a fact about this one.
+     *
+     * readUserServer() returns null, so the server and the hydrating render
+     * agree on "expanded" — the hydration rule the Toaster documents.
+     */
+    const me = useSyncExternalStore(subscribeUser, readUser, readUserServer);
+    const collapsed = me?.preferences?.sidebarCollapsed === true;
 
-    // Rail mode. Starts expanded on the server and is corrected from
-    // localStorage after mount, so the markup cannot mismatch on hydration.
-    const [collapsed, setCollapsed] = useState(false);
+    const [updatePreferences] = useUpdatePreferencesMutation();
 
-    useEffect(() => {
+    /**
+     * Optimistic, then durable. updateUser() writes the local copy and raises
+     * the event every mounted Sidebar is subscribed to, so the rail moves on
+     * the same frame as the click; the request only decides whether it STAYS
+     * moved. A failure puts it back rather than leaving the screen disagreeing
+     * with the account.
+     */
+    const toggleCollapsed = async () => {
+        const next = !collapsed;
+
+        updateUser({ preferences: { ...me?.preferences, sidebarCollapsed: next } });
+
         try {
-            setCollapsed(localStorage.getItem(SIDEBAR_KEY) === "1");
-        } catch {
-            /* private mode — stay expanded */
+            await updatePreferences({ sidebarCollapsed: next }).unwrap();
+        } catch (error) {
+            updateUser({ preferences: { ...me?.preferences, sidebarCollapsed: collapsed } });
+            toast.error(
+                "Could not save your sidebar preference",
+                (error as { data?: { message?: string } })?.data?.message
+            );
         }
-    }, []);
-
-    const toggleCollapsed = () => {
-        setCollapsed((prev) => {
-            const next = !prev;
-            try {
-                localStorage.setItem(SIDEBAR_KEY, next ? "1" : "0");
-            } catch {
-                /* not persisting is survivable */
-            }
-            return next;
-        });
     };
 
     // Pick a default workspace once the list arrives (or when the saved one disappears).
@@ -266,11 +299,44 @@ export default function Sidebar() {
     const isAutomationActive = pathname.includes("/automation");
     const automationHref = workspaceId ? `/workspace/${workspaceId}/automation` : "";
 
+    /**
+     * WIDTH IS ANIMATED, CONTENT IS CROSS-FADED.
+     *
+     * The sidebar is a flex sibling that pushes the page, so the thing being
+     * animated is its width — a transform would slide it over the content and
+     * leave the gap it occupied snapping shut behind it.
+     *
+     * The inner body is pinned to whichever width it was rendered for and sits
+     * absolutely inside the clipping shell, which is what stops it re-wrapping
+     * 60 times a second as the box moves. Its `key` flips with the mode, so
+     * AnimatePresence keeps the OUTGOING body mounted — still at its own width,
+     * with its own props — and fades the two past each other while the shell
+     * springs between the widths. Without that overlap the rail appeared
+     * instantly at its final size inside a box still 288px wide, which is the
+     * snap this replaces.
+     *
+     * `initial={false}`: arriving on a page with the sidebar already collapsed
+     * must not play an entrance. The spring matches AiSidebar and the toasts,
+     * so motion in this app reads as one system rather than per-component
+     * taste.
+     */
     return (
-        <aside
-            className={`h-screen bg-card border-r border-hairline flex flex-col flex-shrink-0 sticky top-0 font-google-sans transition-[width] duration-200 ease-out ${collapsed ? "w-[68px]" : "w-72"
-                }`}
+        <motion.aside
+            initial={false}
+            animate={{ width: collapsed ? RAIL_WIDTH : FULL_WIDTH }}
+            transition={{ type: "spring", stiffness: 420, damping: 40 }}
+            className="relative h-screen shrink-0 overflow-hidden sticky top-0 bg-card border-r border-hairline font-google-sans"
         >
+            <AnimatePresence initial={false}>
+                <motion.div
+                    key={collapsed ? "rail" : "full"}
+                    style={{ width: collapsed ? RAIL_WIDTH : FULL_WIDTH }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.14, ease: "easeOut" }}
+                    className="absolute inset-y-0 left-0 flex flex-col"
+                >
 
             {/* ── Brand + collapse toggle ───────────────────────────── */}
             <div className="px-3 pt-4 pb-3">
@@ -282,19 +348,19 @@ export default function Sidebar() {
                         className={`group flex items-center rounded-xl text-left transition hover:bg-control/60 cursor-pointer ${collapsed ? "justify-center p-1" : "flex-1 gap-2.5 px-2 py-1.5"
                             }`}
                     >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-control/70 transition group-hover:bg-control">
-                            <Image src={logo} alt="Logo" priority className="h-6 w-6 object-contain" />
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-control/70 transition group-hover:bg-control">
+                            <Image src={logo} alt="Logo" priority className="h-8 w-8 object-contain" />
                         </span>
 
                         {!collapsed && (
                             <span className="min-w-0">
                                 <span className="flex items-center gap-0.5 text-[15px] font-bold text-slate-900 leading-none tracking-tight">
-                                    Collaborate
-                                    <span className="bg-gradient-to-r from-[#6C5CE7] via-[#00CEC9] to-accent bg-clip-text text-lg font-extrabold text-transparent">
+                                    Conexus
+                                    <span className="brand-gradient-warm-text text-lg font-extrabold">
                                         X
                                     </span>
                                 </span>
-                                <span className="mt-1 block truncate text-[11px] font-medium text-muted">
+                                <span className="mt-0.5 block truncate text-[11px] font-medium text-muted">
                                     Modern CRM for agile teams
                                 </span>
                             </span>
@@ -316,6 +382,21 @@ export default function Sidebar() {
                         )}
                     </button>
                 </div>
+            </div>
+
+            {/* ── Workspace switcher ─────────────────────────────────
+                 Outside the scrolling <nav> ON PURPOSE: which workspace you are
+                 in is the frame for everything below it, so it must not scroll
+                 away with the modules it scopes. */}
+            <div className={`pb-3 ${collapsed ? "flex justify-center px-3" : "px-3"}`}>
+                <WorkspaceSwitcher
+                    workspaces={workspaces}
+                    activeId={workspaceId}
+                    loading={loadingWorkspaces}
+                    collapsed={collapsed}
+                    onSelect={handleWorkspaceChange}
+                    onCreate={() => setShowCreateModal(true)}
+                />
             </div>
 
             {/* ── Navigation ────────────────────────────────────────── */}
@@ -343,34 +424,6 @@ export default function Sidebar() {
                                 <TbRoute className="h-[18px] w-[18px]" />
                             </RailButton>
                         )}
-
-                        <span className="my-1 h-px w-6 bg-hairline" />
-
-                        {workspaces.map((workspace: Workspace) => {
-                            /**
-                             * Its OWN icon, which is what makes the collapsed
-                             * rail navigable again — every workspace drew the
-                             * same glyph while the only thing telling them apart
-                             * was a tooltip.
-                             */
-                            return (
-                                <RailButton
-                                    key={workspace._id}
-                                    label={workspace.name}
-                                    active={workspace._id === workspaceId}
-                                    onClick={() => handleWorkspaceChange(workspace._id)}
-                                >
-                                    <WorkspaceIcon
-                                        iconKey={workspace.icon}
-                                        className="h-[18px] w-[18px]"
-                                    />
-                                </RailButton>
-                            );
-                        })}
-
-                        <RailButton label="Create workspace" onClick={() => setShowCreateModal(true)}>
-                            <RiAddLine className="h-4 w-4" />
-                        </RailButton>
 
                         {modules.length > 0 && <span className="my-1 h-px w-6 bg-hairline" />}
 
@@ -402,7 +455,7 @@ export default function Sidebar() {
                 <Link
                     href="/Extensions"
                     className={`flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm transition cursor-pointer ${isExtensionsActive
-                        ? "bg-accent/10 font-semibold text-accent"
+                        ? "nav-glass font-semibold text-foreground"
                         : "font-medium text-slate-600 hover:bg-control/60 hover:text-slate-900"
                         }`}
                 >
@@ -414,7 +467,7 @@ export default function Sidebar() {
                     <Link
                         href={automationHref}
                         className={`mt-px flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm transition cursor-pointer ${isAutomationActive
-                            ? "bg-accent/10 font-semibold text-accent"
+                            ? "nav-glass font-semibold text-foreground"
                             : "font-medium text-slate-600 hover:bg-control/60 hover:text-slate-900"
                             }`}
                     >
@@ -429,72 +482,8 @@ export default function Sidebar() {
                     links above them do. */}
                 <div className="my-2 h-px bg-hairline" />
 
-                {/* Workspaces */}
+                {/* Modules — of the workspace named in the switcher above. */}
                 <div>
-                    <SectionHeader
-                        icon={<WORKSPACE_SECTION_ICON className="h-[18px] w-[18px]" />}
-                        label="Workspaces"
-                        count={workspaces.length}
-                        open={open}
-                        onToggle={() => setOpen(!open)}
-                        action={
-                            <button
-                                type="button"
-                                onClick={() => setShowCreateModal(true)}
-                                aria-label="Create workspace"
-                                title="Create workspace"
-                                className="rounded-md p-1 text-muted transition hover:bg-control hover:text-slate-900 cursor-pointer"
-                            >
-                                <RiAddLine className="h-4 w-4" />
-                            </button>
-                        }
-                    />
-
-                    {open && (
-                        <div className="mt-0.5 space-y-px pl-6">
-                            {loadingWorkspaces ? (
-                                <RowSkeleton rows={3} />
-                            ) : workspaces.length === 0 ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCreateModal(true)}
-                                    className="flex w-full items-center gap-2 rounded-lg border border-dashed border-hairline px-3 py-2.5 text-xs font-medium text-muted transition hover:border-accent/40 hover:text-accent cursor-pointer"
-                                >
-                                    <RiAddLine className="h-4 w-4" />
-                                    Create your first workspace
-                                </button>
-                            ) : (
-                                workspaces.map((workspace: Workspace) => {
-                                    const active = workspace._id === workspaceId;
-
-                                    return (
-                                        <button
-                                            key={workspace._id}
-                                            onClick={() => handleWorkspaceChange(workspace._id)}
-                                            title={workspace.name}
-                                            className={`group flex w-full items-center rounded-lg px-2 py-1.5 text-sm transition cursor-pointer ${active
-                                                ? "bg-accent/10 font-semibold text-accent"
-                                                : "font-medium text-slate-600 hover:bg-control/60 hover:text-slate-900"
-                                                }`}
-                                        >
-                                            <span className="truncate">{workspace.name}</span>
-
-                                            <span
-                                                className={`ml-auto shrink-0 text-[11px] font-semibold tabular-nums transition ${active ? "text-accent/70" : "text-muted/70"
-                                                    }`}
-                                            >
-                                                {workspace.totalModules ?? 0}
-                                            </span>
-                                        </button>
-                                    );
-                                })
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {/* Modules */}
-                <div className="mt-px">
                     <SectionHeader
                         icon={<TbCards className="h-[18px] w-[18px]" />}
                         label="Modules"
@@ -527,7 +516,7 @@ export default function Sidebar() {
                                             }
                                             title={moduleItem.name}
                                             className={`group flex w-full items-center rounded-lg px-2 py-1.5 text-sm transition cursor-pointer ${active
-                                                ? "bg-accent/10 font-semibold text-accent"
+                                                ? "nav-glass font-semibold text-foreground"
                                                 : "font-medium text-slate-600 hover:bg-control/60 hover:text-slate-900"
                                                 }`}
                                         >
@@ -544,7 +533,12 @@ export default function Sidebar() {
                 )}
             </nav>
 
-            {/* ── Create workspace modal ────────────────────────────── */}
+                </motion.div>
+            </AnimatePresence>
+
+            {/* ── Create workspace modal ──────────────────────────────
+                 Portalled to <body>, so the shell's overflow-hidden — which is
+                 what clips the body mid-animation — cannot clip it. */}
             {showCreateModal && createPortal(
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
@@ -686,6 +680,6 @@ export default function Sidebar() {
                 </div>,
                 document.body
             )}
-        </aside>
+        </motion.aside>
     );
 }

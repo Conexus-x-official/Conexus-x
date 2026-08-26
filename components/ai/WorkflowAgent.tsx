@@ -9,7 +9,7 @@ import { TbRoute } from "react-icons/tb";
  *
  * Owns automation only: the trigger / conditions / actions recipes that run
  * without anyone opening a board. It never edits records directly — that is
- * Atlas's job (components/ai/AgentChat.tsx).
+ * Aquiline's job (components/ai/AgentChat.tsx).
  *
  * UI shell only. There is no model behind it yet, so sending appends the user's
  * message plus a standing notice rather than inventing an answer. When the

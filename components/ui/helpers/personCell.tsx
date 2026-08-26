@@ -14,7 +14,7 @@ export type MemberLike = PersonLike & { user?: PersonLike };
 // Avatar tints come from the id so a person keeps the same colour everywhere on
 // the board without the server having to store one.
 const AVATAR_TINTS = [
-    "#6C5CE7", "#00B894", "#FF6B6B", "#4D96FF",
+    "#6A00FF", "#00B894", "#FF6B6B", "#4D96FF",
     "#F368C4", "#FF9F43", "#20BF6B", "#E8590C",
 ];
 

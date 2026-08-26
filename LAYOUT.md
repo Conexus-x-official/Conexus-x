@@ -306,7 +306,7 @@ Rules:
 - New surfaces use the token utility, never a hex. `bg-[#f4f4f6]` is now `bg-panel`.
 - `text-white` / `bg-black` are deliberately **not** themed — they are on-accent ink and modal scrim, constant across themes.
 - Adding a theme = one class in `globals.css` + one entry in `themes` in `data/data.js`. Nothing else. The class must define **every** semantic token; a missing one falls back to `:root` (the light value) and will look wrong.
-- `.blue` / `.green` / `.purple` are light-family themes: they override only the `50`–`200` neutral steps, because their ink is already dark. Only `.dark` inverts the full `400`–`900` range.
+- `.blue` / `.green` / `.purple` are light-family themes: they override only the `50`–`200` neutral steps, because their ink is already dark. Only `.dark` inverts the full `400`–`900` range. **They are not currently offered in the picker** — their entries were removed from `themes` in `data/data.js` on 2026-08-26, leaving System / Light / Dark. The CSS is intact, so restoring one is putting its entry back.
 
 ## 11. Known inconsistencies
 

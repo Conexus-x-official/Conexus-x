@@ -80,7 +80,7 @@ export default function RenameWorkspace({
                         if (event.key === "Escape") onClose();
                     }}
                     placeholder={workspace.name}
-                    className="h-11 w-full rounded-lg border border-slate-300 bg-card px-3 text-sm text-slate-800 transition focus:border-[#6C5CE7] focus:outline-none placeholder:text-slate-400"
+                    className="h-11 w-full rounded-lg border border-slate-300 bg-card px-3 text-sm text-slate-800 transition focus:border-[#6A00FF] focus:outline-none placeholder:text-slate-400"
                 />
 
                 <div className="mt-6 flex gap-3">

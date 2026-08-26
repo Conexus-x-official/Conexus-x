@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { ImUngroup } from "react-icons/im";
 import { FaPlus } from "react-icons/fa";
@@ -13,7 +13,7 @@ import {
 
 import Sidebar from "@/components/Sidebar";
 import { toast } from "@/components/ui/toast";
-import MemberInvite from "@/components/ui/modals/memberInvite";
+import MemberInvite, { type InviteIdentifier } from "@/components/ui/modals/memberInvite";
 import CreateModule from "@/components/ui/modals/createModule";
 import DeleteModuleModal from "@/components/ui/modals/deleteModuleConfermation";
 import ProfileDropdown from "@/components/Profile";
@@ -21,10 +21,14 @@ import AiSidebar from "@/components/AiSidebar";
 
 import Tooltip from "@/components/ui/helpers/tooltip";
 import { useSearchHotkey } from "@/lib/useSearchHotkey";
+import { recordVisit } from "@/lib/recentWorkspaces";
 import type { ModuleTag } from "@/store/types";
 import WorkspaceBanner from "@/components/workspace/WorkspaceBanner";
 import ModuleRow, { ModuleRowHeader } from "@/components/workspace/ModuleRow";
-import { useGetWorkspaceQuery } from "@/store/api/workspaces.api";
+import {
+    useGetWorkspaceQuery,
+    useUpdateWorkspaceMutation
+} from "@/store/api/workspaces.api";
 import { useGetMembersQuery, useAddMemberMutation, useRemoveMemberMutation } from "@/store/api/members.api";
 import {
     useGetModulesQuery,
@@ -49,8 +53,23 @@ export default function WorkspacePage() {
     const params = useParams();
     const workspaceId = params.id as string;
 
+    /**
+     * Opening this page IS the visit, so it is recorded here rather than in
+     * each control that navigates here — the sidebar switcher, a Home row and a
+     * pasted deep link all land on this component, and only one of them would
+     * have been covered by hooking up the click handlers.
+     *
+     * Writing to localStorage is exactly what an effect is for (syncing an
+     * external system); it sets no React state, so the set-state-in-effect rule
+     * does not apply.
+     */
+    useEffect(() => {
+        recordVisit(workspaceId);
+    }, [workspaceId]);
+
     const [showInvite, setShowInvite] = useState(false);
-    const [userId, setUserId] = useState("");
+    // Holds an email or a user id depending on the invite modal's tab.
+    const [inviteIdentifier, setInviteIdentifier] = useState("");
     const [role, setRole] = useState("member");
 
     const [deleteModuleModal, setDeleteModuleModal] = useState<string | null>(null);
@@ -64,6 +83,7 @@ export default function WorkspacePage() {
     const { data: members = [] } = useGetMembersQuery(workspaceId, { skip: !workspaceId });
     const { data: modules = [] } = useGetModulesQuery(workspaceId, { skip: !workspaceId });
 
+    const [updateWorkspaceMutation] = useUpdateWorkspaceMutation();
     const [addMember, { isLoading: adding }] = useAddMemberMutation();
     const [removeMemberMutation] = useRemoveMemberMutation();
     const [createModuleMutation, { isLoading: creatingModule }] = useCreateModuleMutation();
@@ -71,6 +91,7 @@ export default function WorkspacePage() {
     const [deleteModuleMutation] = useDeleteModuleMutation();
 
     const [deletingModuleId, setDeletingModuleId] = useState<string | null>(null);
+    const [savingBanner, setSavingBanner] = useState(false);
 
     /**
      * Finding controls. All three are plain state and the list below is derived
@@ -108,11 +129,10 @@ export default function WorkspacePage() {
         setCutoff(null);
     };
 
-    const handleInviteMember = async () => {
-        if (!userId.trim()) return;
+    const handleInviteMember = async (identifier: InviteIdentifier) => {
         try {
-            await addMember({ workspaceId, userId, role }).unwrap();
-            setUserId("");
+            await addMember({ workspaceId, role, ...identifier }).unwrap();
+            setInviteIdentifier("");
             setRole("member");
             setShowInvite(false);
         } catch (error) {
@@ -125,6 +145,27 @@ export default function WorkspacePage() {
             await removeMemberMutation({ workspaceId, memberUserId }).unwrap();
         } catch (error) {
             console.error("Remove member failed:", error);
+        }
+    };
+
+    /**
+     * The cover is per workspace, so it is saved on the workspace itself. The
+     * Workspace tag invalidation is what repaints the banner — no local copy of
+     * the value is kept, so the picker can never disagree with what was stored.
+     */
+    const handleChangeBanner = async (key: string) => {
+        setSavingBanner(true);
+
+        try {
+            await updateWorkspaceMutation({ id: workspaceId, banner: key }).unwrap();
+            toast.success("Cover updated");
+        } catch (error) {
+            toast.error(
+                "Could not change the cover",
+                (error as { data?: { message?: string } })?.data?.message
+            );
+        } finally {
+            setSavingBanner(false);
         }
     };
 
@@ -269,6 +310,9 @@ export default function WorkspacePage() {
                             members={members}
                             workspaceId={workspaceId}
                             onInvite={() => setShowInvite(true)}
+                            banner={workspace?.banner}
+                            onChangeBanner={handleChangeBanner}
+                            savingBanner={savingBanner}
                         />
 
                         <section>
@@ -426,8 +470,8 @@ export default function WorkspacePage() {
                     <MemberInvite
                         open={showInvite}
                         setOpen={setShowInvite}
-                        userId={userId}
-                        setUserId={setUserId}
+                        identifier={inviteIdentifier}
+                        setIdentifier={setInviteIdentifier}
                         role={role}
                         setRole={setRole}
                         adding={adding}
@@ -456,9 +500,9 @@ export default function WorkspacePage() {
                     />
                 </div>
 
-                {/* Right rail — Atlas (CRM) and Relay (workflows) */}
+                {/* Right rail — Aquiline (CRM) and Relay (workflows) */}
                 <AiSidebar
-                    agent="atlas"
+                    agent="aquiline"
                     context={workspace?.name || "this workspace"}
                     workspaceId={workspaceId}
                 />

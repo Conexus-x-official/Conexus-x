@@ -224,6 +224,18 @@ export const profileLinks = [
 ]
 
 
+/**
+ * The themes offered in the picker.
+ *
+ * This ONE array drives both the menu (ui/buttons/themebutton.tsx) and the list
+ * handed to next-themes (providers/theme.provider.tsx), so an entry removed
+ * here is removed from both at once.
+ *
+ * Blue / Green / Purple were dropped 2026-08-26: colour was being offered as a
+ * theme when the only choice that matters is light vs dark. Their token blocks
+ * are STILL in globals.css, untouched - putting an entry back here is the whole
+ * job of restoring one (see LAYOUT.md 12).
+ */
 export const themes = [
   {
     name: "System",
@@ -241,24 +253,6 @@ export const themes = [
     name: "Dark",
     value: "dark",
     bg_hex: "#171717",
-    text_hex: "#ffffff",
-  },
-  {
-    name: "Blue",
-    value: "blue",
-    bg_hex: "#2563eb",
-    text_hex: "#ffffff",
-  },
-  {
-    name: "Green",
-    value: "green",
-    bg_hex: "#16a34a",
-    text_hex: "#ffffff",
-  },
-  {
-    name: "Purple",
-    value: "purple",
-    bg_hex: "#9333ea",
     text_hex: "#ffffff",
   },
 ];

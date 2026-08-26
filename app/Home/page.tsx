@@ -50,28 +50,39 @@ export default function DashboardPage() {
     }
 
     return (
-        <section className="w-full flex w-full h-full" >
+        <section className="flex h-full w-full">
             <Sidebar />
-            <div className="h-screen bg-canvas w-full">
-                <div className="w-full flex flex-col gap-3 mx-auto pl-3 py-1  h-full">
-                    {/* Header */}
-                    <div className="flex justify-between items-center pr-2">
 
-                        <SearchBar value={search} onChange={setSearch} />
-                        <div className="flex items-center gap-2 ">
-                            <NotificationDropdown
-                                open={notification}
-                                setOpen={setNotification}
-                                notifications={notifications}
-                                onViewAll={() => router.push("/notifications")}
-                            />
+            {/*
+                bg-card, not bg-canvas: canvas is the recessed grey the app sits
+                ON, and this surface is the page itself. The token is what keeps
+                "white" honest — it is #ffffff across the light family and the
+                right dark surface under .dark, where a literal white would burn.
+            */}
+            <div className="flex h-screen w-full min-w-0 flex-col bg-card">
+                {/* One hairline separates the bar from the content; no card,
+                    no shadow, no inset — the surface runs edge to edge. */}
+                <header className="flex shrink-0 items-center justify-between gap-4 border-b border-hairline px-6 py-3">
+                    <SearchBar value={search} onChange={setSearch} />
 
-                            <ProfileDropdown
-                                open={profileOpen}
-                                setOpen={setProfileOpen}
-                            />
-                        </div>
+                    <div className="flex items-center gap-2">
+                        <NotificationDropdown
+                            open={notification}
+                            setOpen={setNotification}
+                            notifications={notifications}
+                            onViewAll={() => router.push("/notifications")}
+                        />
+
+                        <ProfileDropdown
+                            open={profileOpen}
+                            setOpen={setProfileOpen}
+                        />
                     </div>
+                </header>
+
+                {/* min-h-0 is what lets the table below own the scroll instead
+                    of stretching this column past the viewport. */}
+                <div className="min-h-0 flex-1">
                     <WorkspaceSections searchQuery={search} />
                 </div>
 
@@ -89,8 +100,8 @@ export default function DashboardPage() {
                 )}
             </div>
 
-            {/* Right rail — Atlas, scoped to every workspace from here */}
-            <AiSidebar agent="atlas" context="all workspaces" />
+            {/* Right rail — Aquiline, scoped to every workspace from here */}
+            <AiSidebar agent="aquiline" context="all workspaces" />
         </section>
     );
 }

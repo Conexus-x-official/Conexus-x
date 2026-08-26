@@ -35,7 +35,7 @@ import {
 import { useGetModulesQuery, useUpdateModuleMutation } from "@/store/api/modules.api";
 import { PersonAvatar, memberName, memberUserId } from "@/components/ui/helpers/personCell";
 import BoardAccessMenu from "@/components/BoardAccessMenu";
-import MemberInvite from "@/components/ui/modals/memberInvite";
+import MemberInvite, { type InviteIdentifier } from "@/components/ui/modals/memberInvite";
 import { toast } from "@/components/ui/toast";
 import type { Member } from "@/store/types";
 
@@ -99,7 +99,8 @@ export default function WorkspaceMembersPage() {
     const [savingUserId, setSavingUserId] = useState<string | null>(null);
     const [savingModuleId, setSavingModuleId] = useState<string | null>(null);
     const [showInvite, setShowInvite] = useState(false);
-    const [inviteUserId, setInviteUserId] = useState("");
+    // Holds an email or a user id depending on the invite modal's tab.
+    const [inviteIdentifier, setInviteIdentifier] = useState("");
     const [inviteRole, setInviteRole] = useState("member");
 
     const myRole = members.find(
@@ -199,14 +200,12 @@ export default function WorkspaceMembersPage() {
         }
     };
 
-    const handleInvite = async () => {
-        if (!inviteUserId.trim()) return;
-
+    const handleInvite = async (identifier: InviteIdentifier) => {
         try {
             const member = await addMember({
                 workspaceId,
-                userId: inviteUserId.trim(),
                 role: inviteRole,
+                ...identifier,
             }).unwrap();
 
             toast.success(
@@ -214,7 +213,7 @@ export default function WorkspaceMembersPage() {
                 workspace?.name
             );
 
-            setInviteUserId("");
+            setInviteIdentifier("");
             setInviteRole("member");
             setShowInvite(false);
         } catch (error) {
@@ -285,7 +284,7 @@ export default function WorkspaceMembersPage() {
                                         setPage(1);
                                     }}
                                     placeholder="Search people"
-                                    className="h-9 w-full rounded-lg border border-slate-200 bg-card pl-9 pr-3 text-sm text-slate-800 transition focus:border-[#6C5CE7] focus:outline-none placeholder:text-slate-400"
+                                    className="h-9 w-full rounded-lg border border-slate-200 bg-card pl-9 pr-3 text-sm text-slate-800 transition focus:border-[#6A00FF] focus:outline-none placeholder:text-slate-400"
                                 />
                             </div>
                         )}
@@ -376,7 +375,7 @@ export default function WorkspaceMembersPage() {
                                                                     event.target.value as MemberRole
                                                                 )
                                                             }
-                                                            className="h-9 rounded-lg border border-slate-200 bg-card px-2 text-sm text-slate-800 transition focus:border-[#6C5CE7] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                                                            className="h-9 rounded-lg border border-slate-200 bg-card px-2 text-sm text-slate-800 transition focus:border-[#6A00FF] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                                                         >
                                                             {ROLE_OPTIONS.map((option) => (
                                                                 <option
@@ -550,7 +549,7 @@ export default function WorkspaceMembersPage() {
                                                         ? "Who can open this module"
                                                         : "Only an owner or admin can change this"
                                                 }
-                                                className="h-9 rounded-lg border border-slate-200 bg-card px-2 text-sm text-slate-800 transition focus:border-[#6C5CE7] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                                                className="h-9 rounded-lg border border-slate-200 bg-card px-2 text-sm text-slate-800 transition focus:border-[#6A00FF] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                                             >
                                                 <option value="workspace">
                                                     Shared with workspace
@@ -579,8 +578,8 @@ export default function WorkspaceMembersPage() {
             <MemberInvite
                 open={showInvite}
                 setOpen={setShowInvite}
-                userId={inviteUserId}
-                setUserId={setInviteUserId}
+                identifier={inviteIdentifier}
+                setIdentifier={setInviteIdentifier}
                 role={inviteRole}
                 setRole={setInviteRole}
                 adding={adding}

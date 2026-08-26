@@ -9,7 +9,7 @@ export interface EntityRef {
     color?: string;
 }
 
-/** One thing Atlas actually wrote, used to refresh the right caches. */
+/** One thing Aquiline actually wrote, used to refresh the right caches. */
 export interface AppliedAction extends EntityRef {
     tool: string;
     workspaceId?: string;
@@ -17,7 +17,7 @@ export interface AppliedAction extends EntityRef {
 }
 
 /** Something waiting on the user to authorise it. */
-/** A whole structure Atlas proposes to build, shown before it is authorised. */
+/** A whole structure Aquiline proposes to build, shown before it is authorised. */
 export interface BlueprintPlan {
     workspace?: string;
     workspaceId?: string;
@@ -77,7 +77,7 @@ export const agentApi = baseApi.injectEndpoints({
          * One chat turn. A mutation rather than a query: it is never cached and
          * never replayed — each call costs real money.
          *
-         * Invalidation is broad on purpose. Atlas can create a module, a collection
+         * Invalidation is broad on purpose. Aquiline can create a module, a collection
          * and five records in a single turn, and the panel has no way to know
          * which lists that touched; RTK refetches only what is subscribed.
          */

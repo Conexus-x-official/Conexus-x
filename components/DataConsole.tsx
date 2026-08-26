@@ -414,7 +414,7 @@ export default function DataConsole() {
                                                     value={ids[kind] ?? ""}
                                                     disabled={blocked}
                                                     onChange={(event) => pickId(kind, event.target.value)}
-                                                    className="h-11 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm text-slate-800 transition focus:border-[#6C5CE7] focus:outline-none disabled:opacity-40 cursor-pointer"
+                                                    className="h-11 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm text-slate-800 transition focus:border-[#6A00FF] focus:outline-none disabled:opacity-40 cursor-pointer"
                                                 >
                                                     <option value="">
                                                         {blocked
@@ -456,7 +456,7 @@ export default function DataConsole() {
                                                     onChange={(event) =>
                                                         setParam(param.name, event.target.value)
                                                     }
-                                                    className="h-11 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm text-slate-800 transition focus:border-[#6C5CE7] focus:outline-none cursor-pointer"
+                                                    className="h-11 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm text-slate-800 transition focus:border-[#6A00FF] focus:outline-none cursor-pointer"
                                                 >
                                                     <option value="">default</option>
                                                     {param.options?.map((option) => (
@@ -473,7 +473,7 @@ export default function DataConsole() {
                                                     onChange={(event) =>
                                                         setParam(param.name, event.target.value)
                                                     }
-                                                    className="h-11 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm text-slate-800 transition focus:border-[#6C5CE7] focus:outline-none placeholder:text-slate-300"
+                                                    className="h-11 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm text-slate-800 transition focus:border-[#6A00FF] focus:outline-none placeholder:text-slate-300"
                                                 />
                                             )}
 

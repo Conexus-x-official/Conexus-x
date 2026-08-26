@@ -13,7 +13,7 @@
 export type MirrorAggregate = "list" | "count" | "sum" | "avg" | "min" | "max";
 
 /** A mirrored value is derived from elsewhere, so it is tinted, not plain. */
-export const MIRROR_TINT = "#6C5CE7";
+export const MIRROR_TINT = "#6A00FF";
 
 export const mirrorCellStyle = {
     backgroundColor: `${MIRROR_TINT}0F`,

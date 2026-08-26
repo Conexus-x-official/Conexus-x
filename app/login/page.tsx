@@ -57,6 +57,9 @@ export default function LoginPage() {
 
             saveToken(data.token);
             saveUser(data.user);
+
+            // No stash to replay any more: the funnel runs signed in, straight
+            // after email verification, and has already built the account.
             router.push("/Home");
         } catch (err: any) {
             setError("Cannot connect to the server. Please verify your backend is running.");
@@ -100,15 +103,15 @@ export default function LoginPage() {
                         
                         <p className="text-sm text-slate-600">
                             Don't have an account?{" "}
-                            <span onClick={() => router.push("/register")} className="font-semibold text-[#ff7675] underline cursor-pointer">Sign Up</span>
+                            <span onClick={() => router.push("/register")} className="font-semibold text-accent underline cursor-pointer">Sign Up</span>
                         </p>
                     </div>
 
                     <div className="flex-1 flex items-center justify-center font-google-sans">
                         <div className="w-full max-w-sm">
                             <div className="mb-8 text-center">
-                                <h1 className="text-2xl font-bold text-slate-900 flex gap-1 items-center">Welcome back to Collaborate
-                                    <span className="font-extrabold text-3xl font-jost">
+                                <h1 className="text-2xl font-bold text-slate-900 flex gap-1 items-center">Welcome back to Conexus
+                                    <span className="brand-gradient-warm-text font-extrabold text-3xl font-jost">
                                         X
                                     </span></h1>
                                 <p className="mt-2 text-sm text-slate-500">Please enter your details to sign in your account</p>
@@ -164,16 +167,16 @@ export default function LoginPage() {
                             </form>
 
                             <Link href="/forget" className="mt-2 text-center text-sm font-google-sans flex justify-center">
-                                <span className="cursor-pointer text-foreground text-md font-semibold  hover:text-[#ff7675]">Forget Password?</span>
+                                <span className="cursor-pointer text-foreground text-md font-semibold  hover:text-accent">Forget Password?</span>
                             </Link>
                         </div>
                     </div>
 
                     <div className="flex items-center justify-between text-xs text-slate-400">
-                        <span>© 2026 Collaborate X</span>
+                        <span>© 2026 Conexus X</span>
                         <div className="flex gap-4">
-                            <span className="cursor-pointer hover:text-[#6C5CE7]">Privacy Policy</span>
-                            <span className="cursor-pointer hover:text-[#6C5CE7]">Support</span>
+                            <span className="cursor-pointer hover:text-[#6A00FF]">Privacy Policy</span>
+                            <span className="cursor-pointer hover:text-[#6A00FF]">Support</span>
                         </div>
                     </div>
                 </div>

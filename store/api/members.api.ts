@@ -17,9 +17,15 @@ export const membersApi = baseApi.injectEndpoints({
             ]
         }),
 
+        // The identifier is a UNION, not two optional fields: the server needs
+        // exactly one of them, and `{ email?, userId? }` would type an empty
+        // object — the one shape it rejects — as valid.
         addMember: build.mutation<
             Member,
-            { workspaceId: string; userId: string; role: string }
+            { workspaceId: string; role: string } & (
+                | { email: string }
+                | { userId: string }
+            )
         >({
             query: ({ workspaceId, ...body }) => ({
                 url: `/workspace-members/${workspaceId}`,

@@ -7,6 +7,8 @@ import type { MemberRole } from "@/lib/roles";
 export interface Workspace {
     /** Catalog key from lib/workspaceIcons.tsx — never a URL or a class name. */
     icon?: string;
+    /** Cover art: a key from lib/banners.ts, or an absolute URL. */
+    banner?: string;
     _id: string;
     name: string;
     slug?: string;

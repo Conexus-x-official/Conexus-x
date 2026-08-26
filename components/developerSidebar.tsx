@@ -6,6 +6,7 @@ import {
     HiOutlineKey,
     HiOutlineCircleStack,
 } from "react-icons/hi2";
+import BackButton from "@/components/ui/buttons/backButton";
 
 const menu = [
     {
@@ -27,6 +28,14 @@ export default function DeveloperSidebar() {
 
     return (
         <aside className="w-72 min-h-screen shrink-0 border-r border-slate-200 bg-card px-5 py-7 sticky top-0">
+            {/* The way out. This section renders no app sidebar, so without
+                it the browser's own arrow was the only exit. History-first:
+                whichever page sent the user here is where they want to land,
+                and /Home only covers the pasted-link case. */}
+            <div className="mb-6 -ml-2">
+                <BackButton fallbackHref="/Home" label="Back" showLabel />
+            </div>
+
             <div className="mb-8">
                 <h1 className="font-dmsans text-xl font-semibold text-slate-900">
                     Developer

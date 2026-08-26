@@ -61,6 +61,8 @@ import { ChevronRight, Link2 } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 import { MIRROR_TINT, mirrorCellStyle, mirrorHeaderStyle } from "@/lib/mirror";
 import { useGetModuleReferencesQuery } from "@/store/api/references.api";
+import { useGetModulesQuery } from "@/store/api/modules.api";
+import BackButton from "@/components/ui/buttons/backButton";
 import SelectedRecordsModal from "@/components/ui/modals/selectedRecordsModal";
 import RecordAmendmentsPanel from "@/components/RecordAmendmentsPanel";
 import DeleteCollectionModal from "@/components/ui/modals/deleteCollectionModal";
@@ -1267,6 +1269,18 @@ export default function ModulePage() {
     const { data: workspaceMembers = [] } = useGetMembersQuery(workspaceId, { skip: !workspaceId });
 
     /**
+     * The board's own name and description, for the header.
+     *
+     * There is no get-one-module endpoint, and adding one would be the wrong
+     * trade here: the Sidebar on this very page already subscribes to
+     * getModules(workspaceId), so reading that entry costs no request. Found by
+     * id rather than held in state, so a rename made anywhere repaints this
+     * header the moment the Module tag invalidates.
+     */
+    const { data: workspaceModules = [] } = useGetModulesQuery(workspaceId, { skip: !workspaceId });
+    const currentModule = workspaceModules.find((m) => m._id === moduleId);
+
+    /**
      * Reference columns hold no value of their own — the server resolves them
      * for the whole board in one request, and a cell write anywhere marks this
      * stale through the RecordValue tag.
@@ -2050,18 +2064,65 @@ export default function ModulePage() {
         <>
             <section className="flex h-screen overflow-hidden">
                 <Sidebar />
-                <div className="h-screen w-full bg-canvas py-2 flex flex-col overflow-hidden">
-                    <div className="bg-card ml-4 rounded-l-xl flex-1 flex flex-col overflow-hidden">
-                        {/* Page header */}
-                        <div className="pl-4 pr-2 flex gap-2 items-center justify-between border-b border-slate-100 shrink-0 bg-card rounded-tl-xl py-2.5">
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-lg font-bold font-google-sans text-slate-800">Collections</h2>
+                <div className="h-screen w-full bg-canvas flex flex-col overflow-hidden">
+                    <div className="bg-card flex-1 flex flex-col overflow-hidden">
+                        {/* Page header — the BOARD, not its contents. It used to
+                            read "Collections", which named the list below it and
+                            left the one thing the header should answer ("which
+                            module am I in?") to the sidebar highlight. The list
+                            gets its own label further down instead. */}
+                        <div className="pl-4 pr-2 flex gap-2 items-center justify-between border-b border-slate-100 shrink-0 bg-card py-2.5">
+                            <div className="flex min-w-0 items-center gap-2">
+                                {/* Up to the workspace, deliberately NOT into
+                                    history: this page pushes its own entries
+                                    when an amendments panel opens, so back()
+                                    would spend the click closing a panel. */}
+                                <BackButton
+                                    fallbackHref={`/workspace/${workspaceId}`}
+                                    label="Back to workspace"
+                                    preferHistory={false}
+                                />
+
+                                <div className="min-w-0">
+                                    {/* No skeleton: the name arrives from a cache
+                                        entry the sidebar has usually filled
+                                        already, and a flashing placeholder in a
+                                        header is worse than a plain fallback. */}
+                                    <h2 className="truncate text-lg font-bold font-google-sans text-slate-800">
+                                        {currentModule?.name || "Module"}
+                                    </h2>
+
+                                    {currentModule?.description && (
+                                        <p className="truncate text-xs text-muted font-dmsans">
+                                            {currentModule.description}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                             <ProfileDropdown onLogout={handleLogout} />
                         </div>
 
                         {/* Module content */}
                         <div className="pl-8 pt-2 flex-1 flex flex-col overflow-hidden">
+                            {/* What the list below IS, now that the header names
+                                the module. It sits OUTSIDE the scroll container
+                                on purpose — inside, a horizontal scroll would
+                                carry the label off to the left away from the
+                                collections it labels. Hidden while there is
+                                nothing to head: the empty state already says
+                                what a collection is, and the skeletons are not
+                                a list yet. */}
+                            {!loading && collections.length > 0 && (
+                                <div className="mb-2 flex shrink-0 items-baseline gap-2 pr-8">
+                                    <h3 className="text-sm font-semibold text-slate-700 font-dmsans">
+                                        Collections
+                                    </h3>
+                                    <span className="text-xs text-muted font-dmsans">
+                                        {collections.length}
+                                    </span>
+                                </div>
+                            )}
+
                             {/* Main collections scroll section with single global scrollbar */}
                             <div
                                 ref={scrollContainerRef}
@@ -2898,9 +2959,9 @@ export default function ModulePage() {
                     />
                 </div>
 
-                {/* Right rail — Atlas (CRM) and Relay (workflows) */}
+                {/* Right rail — Aquiline (CRM) and Relay (workflows) */}
                 <AiSidebar
-                    agent="atlas"
+                    agent="aquiline"
                     context={"this module"}
                     workspaceId={workspaceId}
                     moduleId={moduleId}

@@ -8,6 +8,13 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import logo from "@/app/assets/Logo.png";
 import env from "@/config/env";
 import { saveToken, saveUser } from "@/lib/auth";
+import OnboardingSetup from "@/components/onboarding/OnboardingSetup";
+import type { OnboardingAnswers } from "@/lib/onboarding";
+import {
+    buildAccount,
+    hasAnyWorkspace,
+    saveOnboardingProfile,
+} from "@/lib/applyOnboarding";
 
 const ERROR_MESSAGES: Record<string, string> = {
     access_denied: "You cancelled Google sign-in.",
@@ -21,6 +28,21 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default function GoogleCallbackPage() {
     const router = useRouter();
     const [error, setError] = useState<string | null>(null);
+
+    /**
+     * Google is the one path that cannot ask anything BEFORE the account
+     * exists — the button leaves the page for Google's servers and comes back
+     * with a session already issued, so the register screen is long gone. This
+     * is therefore where a first-time Google user gets the same setup step the
+     * email signup gets, and it is the better half of the deal: there is a
+     * token here, so Finish creates the workspace outright with nothing to
+     * stash and replay.
+     */
+    const [setupFor, setSetupFor] = useState<{
+        token: string;
+        firstName: string;
+    } | null>(null);
+    const [creating, setCreating] = useState(false);
 
     useEffect(() => {
         const finishSignIn = async () => {
@@ -55,7 +77,12 @@ export default function GoogleCallbackPage() {
                 saveToken(token);
                 saveUser(data.user);
 
-                router.replace("/Home");
+                if (await hasAnyWorkspace(token)) {
+                    router.replace("/Home");
+                    return;
+                }
+
+                setSetupFor({ token, firstName: data.user?.firstName ?? "" });
             } catch {
                 setError("We signed you in, but couldn't load your profile. Please try again.");
             }
@@ -63,6 +90,36 @@ export default function GoogleCallbackPage() {
 
         void finishSignIn();
     }, [router]);
+
+    const finishSetup = async (answers: OnboardingAnswers) => {
+        if (!setupFor) return;
+
+        setCreating(true);
+
+        // Reporting, not blocking — never awaited into the build.
+        void saveOnboardingProfile(setupFor.token, answers);
+
+        const built = await buildAccount(setupFor.token, answers);
+
+        // A failed create must not strand someone who is already signed in —
+        // /Home works, it is just empty, and they can make a workspace by hand.
+        router.replace(built ? `/workspace/${built.workspaceId}` : "/Home");
+    };
+
+    if (setupFor) {
+        return (
+            <section className="h-screen w-full bg-canvas p-3">
+                <div className="h-full w-full overflow-hidden rounded-2xl bg-card">
+                    <OnboardingSetup
+                        firstName={setupFor.firstName}
+                        submitting={creating}
+                        onFinish={finishSetup}
+                        onSkip={() => router.replace("/Home")}
+                    />
+                </div>
+            </section>
+        );
+    }
 
     return (
         <section className="flex h-full w-full items-center justify-center bg-canvas p-3 font-google-sans">

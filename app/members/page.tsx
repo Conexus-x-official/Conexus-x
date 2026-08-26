@@ -18,7 +18,7 @@ import { useGetWorkspacesQuery } from "@/store/api/workspaces.api";
 import { useAddMemberMutation } from "@/store/api/members.api";
 import { useAllMembers, memberUserId, type MembershipRow } from "@/store/useAllMembers";
 import { PersonAvatar, memberName } from "@/components/ui/helpers/personCell";
-import MemberInvite from "@/components/ui/modals/memberInvite";
+import MemberInvite, { type InviteIdentifier } from "@/components/ui/modals/memberInvite";
 import { toast } from "@/components/ui/toast";
 
 function colorFor(id: string) {
@@ -56,7 +56,8 @@ export default function MembersPage() {
 
     const [search, setSearch] = useState("");
     const [inviteFor, setInviteFor] = useState<string | null>(null);
-    const [inviteUserId, setInviteUserId] = useState("");
+    // Holds an email or a user id depending on the invite modal's tab.
+    const [inviteIdentifier, setInviteIdentifier] = useState("");
     const [inviteRole, setInviteRole] = useState("member");
 
     const query = search.trim().toLowerCase();
@@ -76,8 +77,8 @@ export default function MembersPage() {
         (workspace) => !query || workspace.name.toLowerCase().includes(query)
     );
 
-    const handleInvite = async () => {
-        if (!inviteFor || !inviteUserId.trim()) return;
+    const handleInvite = async (identifier: InviteIdentifier) => {
+        if (!inviteFor) return;
 
         const workspaceName =
             workspaces.find((workspace) => workspace._id === inviteFor)?.name ??
@@ -86,8 +87,8 @@ export default function MembersPage() {
         try {
             const member = await addMember({
                 workspaceId: inviteFor,
-                userId: inviteUserId.trim(),
                 role: inviteRole,
+                ...identifier,
             }).unwrap();
 
             toast.success(
@@ -95,7 +96,7 @@ export default function MembersPage() {
                 workspaceName
             );
 
-            setInviteUserId("");
+            setInviteIdentifier("");
             setInviteRole("member");
             setInviteFor(null);
         } catch (inviteError) {
@@ -138,7 +139,7 @@ export default function MembersPage() {
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                             placeholder="Search workspaces"
-                            className="h-11 w-full rounded-lg border border-slate-200 bg-card pl-9 pr-3 text-sm text-slate-800 transition focus:border-[#6C5CE7] focus:outline-none placeholder:text-slate-400"
+                            className="h-11 w-full rounded-lg border border-slate-200 bg-card pl-9 pr-3 text-sm text-slate-800 transition focus:border-[#6A00FF] focus:outline-none placeholder:text-slate-400"
                         />
                     </div>
                 )}
@@ -270,8 +271,8 @@ export default function MembersPage() {
             <MemberInvite
                 open={Boolean(inviteFor)}
                 setOpen={(open) => setInviteFor(open ? inviteFor : null)}
-                userId={inviteUserId}
-                setUserId={setInviteUserId}
+                identifier={inviteIdentifier}
+                setIdentifier={setInviteIdentifier}
                 role={inviteRole}
                 setRole={setInviteRole}
                 adding={adding}

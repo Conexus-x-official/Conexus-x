@@ -17,6 +17,47 @@
    so both groups cascade to the whole app, on every route.
 --------------------------------------------------------------------------- */
 
+/* ---------------------------------------------------------------------------
+   Conexus X brand palette
+
+   Taken off the mark itself: the C sweeps cyan -> blue -> purple -> magenta,
+   and the X strokes run yellow -> orange -> pink. These hues are fixed brand
+   constants — they are declared on :root ONLY and are never re-stated by a
+   theme class, so `text-brand-purple` means the same pixel in .light, .dark,
+   .blue, .green and .purple alike. Themes retarget --accent / --primary
+   (below); they do not retarget the brand ramp.
+--------------------------------------------------------------------------- */
+:root {
+  /* cool half — the C */
+  --brand-cyan: #00cfff;
+  --brand-blue: #006cff;
+  --brand-deep-blue: #0037ff;
+  --brand-purple: #6a00ff;
+  --brand-violet: #8a00ff;
+  --brand-magenta: #ff00d4;
+
+  /* warm half — the X */
+  --brand-pink: #ff0099;
+  --brand-red: #ff0066;
+  --brand-orange: #ff6a00;
+  --brand-yellow: #ffb800;
+  --brand-gold: #ffd000;
+
+  /* The two gradients the mark is built from. Kept as whole values rather
+     than as per-stop utilities so a surface picks up the brand sweep with one
+     declaration and every surface sweeps at the same angle. */
+  --gradient-brand: linear-gradient(135deg,
+      var(--brand-cyan) 0%,
+      var(--brand-blue) 30%,
+      var(--brand-purple) 65%,
+      var(--brand-magenta) 100%);
+
+  --gradient-brand-warm: linear-gradient(135deg,
+      var(--brand-gold) 0%,
+      var(--brand-orange) 50%,
+      var(--brand-red) 100%);
+}
+
 :root,
 .light {
   /* surfaces */
@@ -32,10 +73,10 @@
   --muted: #7c7c80;
   --hairline: #e2e8f0;
 
-  /* brand */
-  --accent: #ff7675;
-  --accent-hover: #ff5f5e;
-  --primary: #00cec9;
+  /* brand — the mark's two anchor stops: purple carries actions, blue links */
+  --accent: var(--brand-purple);
+  --accent-hover: #5800d6;
+  --primary: var(--brand-blue);
 
   /* lift shadow for a dragged row / column snapshot */
   --drag-shadow: 0 18px 35px -10px rgb(0 0 0 / 0.45);
@@ -65,9 +106,13 @@
   --muted: #94a3b8;
   --hairline: #2c313c;
 
-  --accent: #ff7675;
-  --accent-hover: #ff5f5e;
-  --primary: #00cec9;
+  /* Same two brand hues, lifted. #6a00ff carries only ~3.2:1 against this
+     canvas — fine for a fill, short of legible for accent TEXT — so the dark
+     theme walks the same hue up in lightness rather than swapping it out, and
+     takes the C's brightest cool stop for --primary. */
+  --accent: #9d4dff;
+  --accent-hover: #b478ff;
+  --primary: var(--brand-cyan);
 
   /* a black shadow is invisible on a dark board — lift with light instead */
   --drag-shadow: 0 18px 38px -10px rgb(255 255 255 / 0.28);
@@ -232,6 +277,19 @@
   --color-accent-hover: var(--accent-hover);
   --color-primary: var(--primary);
 
+  /* brand ramp — bg-brand-cyan / text-brand-magenta / border-brand-purple … */
+  --color-brand-cyan: var(--brand-cyan);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-deep-blue: var(--brand-deep-blue);
+  --color-brand-purple: var(--brand-purple);
+  --color-brand-violet: var(--brand-violet);
+  --color-brand-magenta: var(--brand-magenta);
+  --color-brand-pink: var(--brand-pink);
+  --color-brand-red: var(--brand-red);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-gold: var(--brand-gold);
+
   --color-background: var(--canvas);
 
   --font-sans: var(--font-geist-sans);
@@ -241,6 +299,79 @@
   --font-jost: var(--font-jost);
   --font-istokweb: var(--font-istokweb);
   --font-google-sans: var(--font-google-sans);
+}
+
+/* ── Brand gradient surfaces ─────────────────────────────────────────────
+   Four classes, because a gradient is wanted in exactly two places (a fill
+   and a run of text) in exactly two temperatures (the C's cool sweep, the X's
+   warm one), and Tailwind's from-/via-/to- utilities cannot express a
+   four-stop sweep with fixed percentages without four arbitrary values at
+   every call site.
+
+   The -text variants clip the gradient to the glyphs. `color: transparent`
+   is what makes the clip visible, so anything using them must not also carry
+   a text-colour utility. */
+.brand-gradient {
+  background-image: var(--gradient-brand);
+}
+
+.brand-gradient-warm {
+  background-image: var(--gradient-brand-warm);
+}
+
+.brand-gradient-text {
+  background-image: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.brand-gradient-warm-text {
+  background-image: var(--gradient-brand-warm);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* -- Selected navigation row -------------------------------------------
+   Notion's rule, and the reason the accent tint is gone from these rows:
+   SELECTION IS A NEUTRAL SURFACE, NOT A HUE. A coloured fill plus coloured
+   text on every active row turned the sidebar into a column of badges, and it
+   spent the accent — which should mean "this is the action" — on saying
+   "you are here", something the surface alone already says.
+
+   The glass is three cheap layers rather than a real blur: a translucent
+   neutral fill so the surface behind tints through, a hairline ring that
+   catches the edge, and a 1px inset highlight along the top that reads as
+   light landing on something raised.
+
+   The values are TRANSLUCENT LITERALS, not color-mix over two custom
+   properties — Lightning CSS has collapsed that form on this codebase before
+   (see .subrecord-grid). Translucent also means one rule composites correctly
+   over .light, .blue, .green and .purple alike; only .dark has to invert.
+*/
+.nav-glass {
+  background-color: rgb(15 23 42 / 0.06);
+  box-shadow:
+    inset 0 0 0 1px rgb(15 23 42 / 0.07),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.6);
+  /* No-op on an opaque sidebar; real frost anywhere this sits over content. */
+  backdrop-filter: blur(6px);
+}
+
+.nav-glass:hover {
+  background-color: rgb(15 23 42 / 0.09);
+}
+
+.dark .nav-glass {
+  background-color: rgb(255 255 255 / 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.10),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.07);
+}
+
+.dark .nav-glass:hover {
+  background-color: rgb(255 255 255 / 0.12);
 }
 
 @keyframes shimmer {

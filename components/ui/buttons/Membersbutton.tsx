@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { HiOutlinePlus } from "react-icons/hi2";
+import { MdOutlineGroupAdd } from "react-icons/md";
 import { getUser } from "@/lib/auth";
 import { presenceLabel } from "@/lib/presence";
 import PresenceDot from "../helpers/presenceDot";
@@ -63,7 +63,7 @@ export default function MembersButton({
     const hasMembers = visibleMembers.length > 0;
 
     return (
-        <div className="inline-flex items-center overflow-hidden rounded-lg border border-slate-300 bg-card shadow-sm">
+        <div className="inline-flex h-9 items-center overflow-hidden rounded-lg border border-slate-300 bg-card shadow-sm">
             {hasMembers && (
                 <Tooltip
                     label={`View all ${otherMembers.length + 1} members`}
@@ -73,7 +73,7 @@ export default function MembersButton({
                     type="button"
                     onClick={() => router.push("/members")}
                     aria-label="View all members"
-                    className="flex items-center gap-1.5 border-r border-slate-300 px-3 py-1.5 transition hover:bg-slate-50 cursor-pointer"
+                    className="flex h-full items-center gap-1.5 border-r border-slate-300 px-2.5 transition hover:bg-slate-50 cursor-pointer"
                 >
                     <div className="flex items-center -space-x-2">
                         {visibleMembers.map((member: any, index: number) => {
@@ -144,10 +144,9 @@ export default function MembersButton({
                     type="button"
                     onClick={onInvite}
                     aria-label="Invite member"
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 font-dmsans text-xs font-medium text-[#FB923C] transition hover:text-[#EA580C] cursor-pointer"
+                    className="flex h-full w-9 items-center justify-center text-muted transition hover:text-accent cursor-pointer"
                 >
-                    <HiOutlinePlus size={15} strokeWidth={2.5} />
-                    <span>Invite</span>
+                    <MdOutlineGroupAdd className="h-[18px] w-[18px]" />
                 </button>
             </Tooltip>
         </div>

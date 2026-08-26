@@ -30,13 +30,16 @@ export default function Navbar() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100">
                     <Image
                         src={logo}
-                        alt="Collaborate X Logo"
+                        alt="Conexus X Logo"
                         priority
                     />
                 </div>
 
-                <span className="font-google-sans font-bold text-foreground">
-                    Collaborate X
+                <span className="flex items-center gap-0.5 font-google-sans font-bold text-foreground">
+                    Conexus
+                    <span className="brand-gradient-warm-text text-lg font-extrabold">
+                        X
+                    </span>
                 </span>
             </Link>
 

@@ -14,7 +14,16 @@ export default function ThemeButton() {
     const mounted = useSyncExternalStore(subscribeNoop, () => true, () => false);
 
     const activeTheme = mounted ? theme : undefined;
-    const selectedTheme = themes.find((item) => item.value === activeTheme);
+
+    /**
+     * A theme that is no longer offered can still be sitting in localStorage
+     * from before it was removed - next-themes reads storage without checking
+     * it against the list. Falling back to the first entry keeps the trigger
+     * swatch from rendering as an empty circle; picking any row overwrites the
+     * stale value for good.
+     */
+    const selectedTheme =
+        themes.find((item) => item.value === activeTheme) ?? themes[0];
 
     return (
         <div className="w-full">

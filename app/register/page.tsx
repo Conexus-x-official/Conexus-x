@@ -14,6 +14,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import GoogleButton from "@/components/ui/buttons/googleauth";
+import OnboardingSetup from "@/components/onboarding/OnboardingSetup";
+import type { OnboardingAnswers } from "@/lib/onboarding";
+import { buildAccount, saveOnboardingProfile } from "@/lib/applyOnboarding";
+import { saveToken, saveUser } from "@/lib/auth";
 import env from "@/config/env";
 
 const slides = [
@@ -74,6 +78,13 @@ export default function RegisterPage() {
     const [slide, setSlide] = useState(0);
     const [showOtp, setShowOtp] = useState(false);
     const [verified, setVerified] = useState(false);
+    /**
+     * The session verify-otp hands back. Its presence IS "the funnel may run":
+     * every step of the build is behind `protect`, so without it there would be
+     * nothing to do but stash answers and replay them after a sign-in.
+     */
+    const [sessionToken, setSessionToken] = useState<string | null>(null);
+    const [building, setBuilding] = useState(false);
 
     const passwordStrength = passwordRules.filter((rule) =>
         rule.test(formData.password)
@@ -270,9 +281,21 @@ export default function RegisterPage() {
             setVerified(true);
             setLoading(false);
 
-            setTimeout(() => {
-                router.push("/login");
-            }, 1200);
+            /**
+             * Verifying the inbox IS the proof a password sign-in gives, so the
+             * server issues a session here and the funnel runs signed in —
+             * which is what lets it create the workspace, invite people and
+             * record the answers immediately instead of parking them.
+             */
+            if (data.token) {
+                saveToken(data.token);
+                saveUser(data.user);
+                setTimeout(() => setSessionToken(data.token), 900);
+            } else {
+                // Older server without the token: fall back to the sign-in form
+                // rather than showing a funnel that cannot save anything.
+                setTimeout(() => router.push("/login"), 900);
+            }
         } catch {
             setError(
                 "Cannot connect to server. Make sure your backend is running."
@@ -327,9 +350,50 @@ export default function RegisterPage() {
         }
     };
 
+    const handleFinishSetup = async (answers: OnboardingAnswers) => {
+        if (!sessionToken) return;
+
+        setBuilding(true);
+
+        // Reporting, not blocking — never awaited into the build.
+        void saveOnboardingProfile(sessionToken, answers);
+
+        const built = await buildAccount(sessionToken, answers);
+
+        // A failed build must not strand someone already signed in: /Home works,
+        // it is just empty, and a workspace can be made by hand from there.
+        router.push(built ? `/workspace/${built.workspaceId}` : "/Home");
+    };
+
+    const handleSkipSetup = () => {
+        router.push("/Home");
+    };
+
     const handleOAuth = (provider: "apple") => {
         window.location.href = `${env.NEXT_PUBLIC_API_URL}/auth/${provider}`;
     };
+
+    /**
+     * Setup replaces BOTH panels.
+     *
+     * The marketing rail on the left is there to fill time while someone types
+     * their details; once they are through it is just a slide carousel taking
+     * half the screen from the thing that now needs it — the board preview.
+     */
+    if (sessionToken) {
+        return (
+            <section className="h-screen w-full bg-canvas p-3">
+                <div className="h-full w-full overflow-hidden rounded-2xl bg-card">
+                    <OnboardingSetup
+                        firstName={formData.firstName}
+                        submitting={building}
+                        onFinish={handleFinishSetup}
+                        onSkip={handleSkipSetup}
+                    />
+                </div>
+            </section>
+        );
+    }
 
     return (
         <section className="w-full h-full bg-canvas p-3">
@@ -413,9 +477,9 @@ export default function RegisterPage() {
                                 <>
                                     <div className="mb-8 text-center">
                                         <h1 className="text-2xl font-bold text-slate-900 flex gap-1 items-center justify-center">
-                                            Create your Collaborate
+                                            Create your Conexus
 
-                                            <span className="font-extrabold text-3xl font-jost">
+                                            <span className="brand-gradient-warm-text font-extrabold text-3xl font-jost">
                                                 X
                                             </span>
                                         </h1>
@@ -898,7 +962,7 @@ export default function RegisterPage() {
                                             </p>
 
                                             <p className="mt-4 text-sm text-slate-400">
-                                                Redirecting to login...
+                                                Setting up your workspace...
                                             </p>
                                         </div>
                                     )}
@@ -909,7 +973,7 @@ export default function RegisterPage() {
 
                     <div className="flex items-center justify-between text-xs text-slate-400">
                         <span>
-                            © 2026 Collaborate X
+                            © 2026 Conexus X
                         </span>
 
                         <div className="flex gap-4">

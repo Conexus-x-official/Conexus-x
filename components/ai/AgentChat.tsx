@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import Image from "next/image";
 import {
     LayoutGrid,
     SendHorizontal,
@@ -30,12 +31,16 @@ import { PALETTE } from "@/data/data";
 import { useAppSelector } from "@/store/hooks";
 import { selectActiveWorkspaceId } from "@/store/selectors/workspace.selectors";
 import { useGetWorkspacesQuery } from "@/store/api/workspaces.api";
+import { setAgentStatus } from "@/lib/agentStatus";
+import { readUser, readUserServer, subscribeUser } from "@/lib/auth";
+import aquilineLogo from "@/app/assets/Aquiline.png";
+import userAsset from "@/app/assets/user.png";
 
 /**
- * Atlas — the CRM agent's panel.
+ * Aquiline — the CRM agent's panel.
  *
  * The model is a doer, not a talker (see backend/services/agent.service.ts), so
- * this reads as a worklog rather than a conversation: a short line from Atlas
+ * this reads as a worklog rather than a conversation: a short line from Aquiline
  * plus chips for what it actually changed. Every turn costs real money, so the
  * panel shows the running spend instead of hiding it.
  */
@@ -59,6 +64,19 @@ type Mention = Pick<EntityRef, "kind" | "name"> & {
     color?: string;
 };
 
+/**
+ * The agent's own name, emphasised wherever a reply says it.
+ *
+ * It travels through the same pass that draws entity chips rather than a
+ * second replace over the output: withChips returns React nodes, so anything
+ * running afterwards would have to walk them, and two passes over the same
+ * string is how one of them ends up matching inside the other's output.
+ */
+const AGENT_NAME = "Aquiline";
+
+/** One tile size and shape for every avatar in the thread. */
+const AVATAR = "h-6 w-6 shrink-0 overflow-hidden rounded-lg bg-control";
+
 const SUGGESTIONS = [
     "Set up a sales CRM for me",
     "Add a module named Q3 Pipeline here",
@@ -71,7 +89,7 @@ const SUGGESTIONS = [
  *
  * The request is a single non-streaming call, so these are TIMED, not measured
  * — the panel cannot see which round the loop is on. They are worded to stay
- * true of whatever is happening: Atlas reads, then acts, then writes its line.
+ * true of whatever is happening: Aquiline reads, then acts, then writes its line.
  */
 const STAGES = [
     { after: 0, label: "Reading your request" },
@@ -145,17 +163,31 @@ function EntityChip({
 function withChips(text: string, mentions: Mention[], onAccent = false) {
     const named = mentions.filter((mention) => mention.name.trim().length > 1);
 
-    if (named.length === 0) return text;
+    // The agent's name is always a term, even when the turn named no entities —
+    // it is what makes "I'm Aquiline" read as an introduction rather than a
+    // sentence that happens to contain a word.
+    const terms = [
+        ...named.map((mention) => escapeRegExp(mention.name)),
+        escapeRegExp(AGENT_NAME),
+    ];
 
     // Longest first, so "New Tasks" wins over a stray "New".
     const ordered = [...named].sort((a, b) => b.name.length - a.name.length);
 
     const pattern = new RegExp(
-        `"?(${ordered.map((mention) => escapeRegExp(mention.name)).join("|")})"?`,
+        `"?(${terms.sort((a, b) => b.length - a.length).join("|")})"?`,
         "gi"
     );
 
     return text.split(pattern).map((part, index) => {
+        if (part?.toLowerCase() === AGENT_NAME.toLowerCase()) {
+            return (
+                <strong key={`n-${index}`} className="font-bold">
+                    {part}
+                </strong>
+            );
+        }
+
         const hit = ordered.find(
             (mention) => mention.name.toLowerCase() === part.toLowerCase()
         );
@@ -169,7 +201,7 @@ function withChips(text: string, mentions: Mention[], onAccent = false) {
 }
 
 /**
- * The structure Atlas proposes, drawn before anything is built.
+ * The structure Aquiline proposes, drawn before anything is built.
  *
  * Shown in full rather than summarised: "12 collections" is not something a
  * person can meaningfully agree to, but a list of names is.
@@ -255,7 +287,7 @@ interface AgentChatProps {
 
 const messageFrom = (error: unknown): string => {
     const data = (error as { data?: { message?: string } })?.data;
-    return data?.message || "Atlas could not answer that. Try again.";
+    return data?.message || "Aquiline could not answer that. Try again.";
 };
 
 export default function AgentChat({
@@ -267,7 +299,7 @@ export default function AgentChat({
 
     /**
      * The remembered workspace outlives the workspace itself — it sits in
-     * localStorage and survives a delete. Sending a dead id told Atlas it had
+     * localStorage and survives a delete. Sending a dead id told Aquiline it had
      * somewhere to build, so only an id that is still in the list is passed.
      */
     const { data: workspaces = [] } = useGetWorkspacesQuery();
@@ -278,12 +310,24 @@ export default function AgentChat({
             ? activeWorkspaceId
             : undefined);
 
+    /**
+     * Whose messages these are. Read through the external store rather than an
+     * effect so it needs no setState-in-effect, and so an avatar uploaded from
+     * the profile menu updates the thread without a reload — updateUser()
+     * already raises the event this subscribes to.
+     */
+    const me = useSyncExternalStore(subscribeUser, readUser, readUserServer);
+
+    const myAvatar = me?.avatar || userAsset.src;
+    const myName =
+        [me?.firstName, me?.lastName].filter(Boolean).join(" ") || "You";
+
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [draft, setDraft] = useState("");
     const [spentUsd, setSpentUsd] = useState(0);
 
     /**
-     * Everything Atlas has named this session. Kept at panel level so an earlier
+     * Everything Aquiline has named this session. Kept at panel level so an earlier
      * message — including the user's own — can still be chipped once we learn
      * what those names were.
      */
@@ -291,6 +335,14 @@ export default function AgentChat({
     const [stage, setStage] = useState(STAGES[0].label);
 
     const [sendAgentMessage, { isLoading }] = useSendAgentMessageMutation();
+
+    /**
+     * The panel header shows this, so it has to be published rather than kept
+     * local. Derived from what is actually true right now — a request in
+     * flight, or the last turn having failed — never stored, so a fault can
+     * never outlive the session that saw it.
+     */
+    const [faulted, setFaulted] = useState(false);
     const [confirmAgentAction, { isLoading: authorising }] =
         useConfirmAgentActionMutation();
 
@@ -350,6 +402,8 @@ export default function AgentChat({
         ]);
 
         try {
+            setFaulted(false);
+
             const reply = await sendAgentMessage({
                 messages: history,
                 workspaceId: liveWorkspaceId,
@@ -371,6 +425,7 @@ export default function AgentChat({
                 },
             ]);
         } catch (error) {
+            setFaulted(true);
             setMessages((previous) => [
                 ...previous,
                 { id: `e-${now}`, author: "error", text: messageFrom(error) },
@@ -404,6 +459,7 @@ export default function AgentChat({
                 },
             ]);
         } catch (error) {
+            setFaulted(true);
             setMessages((previous) => [
                 ...previous.map((item) =>
                     item.id === message.id ? { ...item, settled: "done" as const } : item
@@ -420,6 +476,16 @@ export default function AgentChat({
             )
         );
 
+    /**
+     * Working beats faulted: while a retry is in flight the honest answer is
+     * "working", and showing the previous failure at the same time would say
+     * two things at once.
+     */
+    useEffect(() => {
+        const busy = isLoading || authorising;
+        setAgentStatus(busy ? "working" : faulted ? "issue" : "ready");
+    }, [isLoading, authorising, faulted]);
+
     const isEmpty = messages.length === 0;
 
     return (
@@ -430,18 +496,21 @@ export default function AgentChat({
 
                 {isEmpty ? (
                     <div className="flex h-full flex-col items-center justify-center text-center">
-                        <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 text-accent">
-                            <LayoutGrid className="h-6 w-6" />
+                        {/* p-2.5: the mark is a full-bleed square, so without
+                            inset it touches the tile edge and reads as a
+                            cropped image rather than a logo. */}
+                        <span className="mb-3 flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-control p-2.5">
+                            <Image
+                                src={aquilineLogo}
+                                alt=""
+                                className="h-full w-full object-contain"
+                                priority
+                            />
                         </span>
 
-                        <h3 className="text-sm font-bold text-slate-900">Atlas</h3>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
-                            CRM Agent
-                        </p>
-
+                        <h3 className="text-sm font-bold text-slate-900">Aquiline</h3>
                         <p className="mx-auto mt-2 max-w-[16rem] text-xs leading-relaxed text-muted">
-                            Say what you want built — workspace, module, collection, columns
-                            or records — and Atlas builds it. It asks before deleting anything.
+                            Say what you want to built Aquiline help to builds it. It asks before deleting anything.
                         </p>
 
                         <div className="mt-5 w-full space-y-1.5">
@@ -462,10 +531,38 @@ export default function AgentChat({
                         {messages.map((message) => {
                             if (message.author === "user") {
                                 return (
-                                    <div key={message.id} className="flex justify-end">
-                                        <p className="max-w-[85%] rounded-2xl rounded-br-md bg-accent px-3 py-2 text-xs leading-relaxed text-white">
-                                            {withChips(message.text, known, true)}
+                                    <div
+                                        key={message.id}
+                                        className="flex items-start justify-end gap-2"
+                                    >
+                                        {/* The SAME surface as the agent's
+                                            bubble. Side, avatar and the flat
+                                            corner still tell the two apart, so
+                                            the accent fill was doing no work
+                                            that the layout was not already
+                                            doing — and it spent the one colour
+                                            in the panel on saying "you typed
+                                            this", which nobody needed telling.
+
+                                            `onAccent` goes with it: entity
+                                            chips can go back to their own
+                                            colours now there is no coloured
+                                            fill for them to fight. */}
+                                        <p className="max-w-[85%] rounded-2xl rounded-br-md bg-control/60 px-3 py-2 text-xs leading-relaxed text-slate-700">
+                                            {withChips(message.text, known)}
                                         </p>
+
+                                        {/* Same tile as the agent's — size,
+                                            radius and surface — so the two
+                                            sides of the thread read as a pair
+                                            rather than two designs. */}
+                                        <span className={`mt-0.5 ${AVATAR}`} title={myName}>
+                                            <img
+                                                src={myAvatar}
+                                                alt={myName}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        </span>
                                     </div>
                                 );
                             }
@@ -485,8 +582,18 @@ export default function AgentChat({
 
                             return (
                                 <div key={message.id} className="flex items-start gap-2">
-                                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                                        <LayoutGrid className="h-3.5 w-3.5" />
+                                    {/* The agent signs its own replies with its
+                                        mark, not a generic glyph - the same one
+                                        the header and empty state carry. */}
+                                    <span
+                                        className={`mt-0.5 flex items-center justify-center p-1 ${AVATAR}`}
+                                        title={AGENT_NAME}
+                                    >
+                                        <Image
+                                            src={aquilineLogo}
+                                            alt=""
+                                            className="h-full w-full object-contain"
+                                        />
                                     </span>
 
                                     <div className="min-w-0 max-w-[85%]">
@@ -623,7 +730,9 @@ export default function AgentChat({
 
                         {isLoading && (
                             <div className="flex items-start gap-2">
-                                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                                <span
+                                    className={`mt-0.5 flex items-center justify-center text-body ${AVATAR}`}
+                                >
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                 </span>
                                 <p className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-control/60 px-3 py-2 text-xs text-muted">
@@ -683,7 +792,7 @@ export default function AgentChat({
                                 send();
                             }
                         }}
-                        placeholder="Tell Atlas what to build…"
+                        placeholder="Tell Aquiline what to build…"
                         className="w-full resize-none bg-transparent px-3 pt-2.5 text-xs leading-relaxed text-slate-800 outline-none placeholder:text-muted"
                     />
 

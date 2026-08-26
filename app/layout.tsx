@@ -42,7 +42,7 @@ const istokweb = Istok_Web({
   variable: "--font-istokweb",
 })
 export const metadata: Metadata = {
-  title: "Collaborate x",
+  title: "Conexus X",
   description: "CRM Application",
 };
 
