@@ -10,6 +10,7 @@ import {
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 
 import { timeAgo } from "@/lib/relativeTime";
+import Tooltip from "./ui/helpers/tooltip";
 import {
     useGetActivityQuery,
     useRevertActivityMutation,
@@ -51,6 +52,16 @@ function actorName(user: ActivityEntry["user"]): string {
 function initialOf(value: string): string {
     return (value || "?").trim().charAt(0).toUpperCase();
 }
+
+/**
+ * The colour of a value that is no longer current.
+ *
+ * A literal rather than a token, and deliberately the same in every theme —
+ * like `text-white` and `bg-black` in LAYOUT.md §10.2, it is not a surface that
+ * should re-tint per theme but a fixed signal: this is the value you no longer
+ * have. White ink clears AA on it at this weight.
+ */
+const PAST_CHIP = "#F62043";
 
 /** A bare Mongo id — meaningful to the database, noise to a reader. */
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
@@ -138,32 +149,70 @@ export function ActivityRow({
     const where = breadcrumb(entry);
     const before = renderValue(entry.before);
     const after = renderValue(entry.after);
-    const showTransition = before !== null || after !== null;
+    /**
+     * A pair worth showing is a pair that CHANGED.
+     *
+     * Rows written before the module log named its field stored the module's
+     * NAME on both sides, so a tag edit rendered "Product → Product" — one
+     * value twice, which reads as a broken control rather than as history.
+     * Those rows are already in the database and cannot be rewritten, so the
+     * identical case is dropped here as well as fixed at the source.
+     */
+    const changed = (before !== null || after !== null) && before !== after;
+
+    /**
+     * A MISSING SIDE IS NOT A VALUE, so it gets no chip.
+     *
+     * Creating something logged "empty → Clients", and that word "empty" was
+     * the widest thing on the line — a chip drawn for a state that never
+     * existed, pushing the one value that matters to the right of an arrow
+     * pointing out of nothing. A creation now shows just what was made, and a
+     * deletion just what was lost. The pair only appears when both ends are
+     * real, which is the only case where the arrow is carrying information.
+     */
+    const showBefore = changed && before !== null;
+    const showAfter = changed && after !== null;
 
     return (
-        <div className={`group/row flex gap-2.5 px-4 py-2.5 ${reverted ? "opacity-60" : ""}`}>
+        <div className={`group/row flex gap-2.5 px-4 py-3 transition hover:bg-control/40 ${reverted ? "opacity-60" : ""}`}>
 
             {/* Who — avatar, falling back to an initial.
 
                 An automated row is acted by the Automation bot, which has no
                 picture and never will; a bolt says what it is faster than the
                 letter "A" in a circle. */}
-            <span
-                className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full text-[10px] font-bold text-white ${entry.automation ? "bg-accent/15 text-accent" : "bg-accent"
-                    }`}
+            <Tooltip
+                label={automated ? `${AUTOMATION_ACTOR} - ${entry.automation?.name}` : who}
+                side="bottom"
             >
-                {entry.automation ? (
-                    <HiOutlineBolt className="h-3.5 w-3.5" />
-                ) : entry.user?.avatar ? (
-                    <img
-                        src={entry.user.avatar}
-                        alt={who}
-                        className="h-full w-full object-cover"
-                    />
-                ) : (
-                    initialOf(who)
-                )}
-            </span>
+                <span
+                    className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-[10px] font-bold ${entry.automation
+                        ? "bg-blue-600 text-white"
+                        : entry.user?.avatar
+                            ? "border border-slate-300 bg-card"
+                            : "bg-slate-900 text-white"
+                        }`}
+                >
+                    {entry.automation ? (
+                        <HiOutlineBolt className="h-3.5 w-3.5" />
+                    ) : entry.user?.avatar ? (
+                        /* object-CONTAIN on a solid card ground, not cover on a
+                           tinted one. An avatar here is as often a logo as a
+                           face, and a transparent PNG over the accent wash came
+                           out as a violet blob with a mark floating in it —
+                           then cover cropped whatever survived. Contain shows
+                           the whole mark, and white is the ground a logo is
+                           drawn for. */
+                        <img
+                            src={entry.user.avatar}
+                            alt={who}
+                            className="h-full w-full object-contain p-0.5"
+                        />
+                    ) : (
+                        initialOf(who)
+                    )}
+                </span>
+            </Tooltip>
 
             <div className="min-w-0 flex-1">
 
@@ -184,13 +233,12 @@ export function ActivityRow({
 
                 {entry.automation && (
                     <span className="mt-1 flex flex-wrap items-center gap-1.5">
-                        <span
-                            title={`Done automatically by "${entry.automation.name}"`}
-                            className="inline-flex max-w-full items-center gap-1 rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold text-accent"
-                        >
-                            <HiOutlineBolt className="h-2.5 w-2.5 shrink-0" />
-                            <span className="truncate">{entry.automation.name}</span>
-                        </span>
+                        <Tooltip label={`Done automatically by "${entry.automation.name}"`}>
+                            <span className="inline-flex max-w-full items-center gap-1 rounded-md bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                <HiOutlineBolt className="h-2.5 w-2.5 shrink-0" />
+                                <span className="truncate">{entry.automation.name}</span>
+                            </span>
+                        </Tooltip>
 
                         {/* Who set it off. Secondary on purpose — they did cause
                             it, but they did not do it. */}
@@ -203,17 +251,41 @@ export function ActivityRow({
                 )}
 
                 {/* From → to, when the change had two ends */}
-                {showTransition && (
-                    <div className="mt-1 flex flex-wrap items-center gap-1">
-                        <span className="max-w-[140px] truncate rounded bg-control px-1.5 py-0.5 text-[10px] font-medium text-muted line-through decoration-muted/50">
-                            {before ?? "empty"}
-                        </span>
+                {/*
+                    SOLID chips, white ink, and a tooltip carrying the value in
+                    full — they are capped at 140px, and a truncated audit value
+                    is worse than none: you cannot tell whether the part you
+                    cannot see is the part that changed.
 
-                        <HiOutlineArrowRight className="h-2.5 w-2.5 shrink-0 text-muted" />
+                    Red for what it WAS, blue for what it IS. The pair reads
+                    past-then-present on colour alone, so the arrow confirms the
+                    direction rather than being the only thing carrying it — and
+                    when only one end is real, the arrow is not drawn at all.
+                */}
+                {(showBefore || showAfter) && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                        {showBefore && (
+                            <Tooltip label={before}>
+                                <span
+                                    style={{ backgroundColor: PAST_CHIP }}
+                                    className="max-w-[140px] truncate rounded-md px-1.5 py-0.5 text-[10px] font-medium text-white line-through decoration-white/60"
+                                >
+                                    {before}
+                                </span>
+                            </Tooltip>
+                        )}
 
-                        <span className="max-w-[140px] truncate rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
-                            {after ?? "empty"}
-                        </span>
+                        {showBefore && showAfter && (
+                            <HiOutlineArrowRight className="h-2.5 w-2.5 shrink-0 text-muted" />
+                        )}
+
+                        {showAfter && (
+                            <Tooltip label={after}>
+                                <span className="max-w-[140px] truncate rounded-md bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                    {after}
+                                </span>
+                            </Tooltip>
+                        )}
                     </div>
                 )}
 
@@ -221,20 +293,19 @@ export function ActivityRow({
                 <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted">
                     {where && (
                         <>
-                            <span className="truncate" title={where}>
-                                {where}
-                            </span>
+                            <Tooltip label={where}>
+                                <span className="truncate">{where}</span>
+                            </Tooltip>
                             <span aria-hidden>·</span>
                         </>
                     )}
 
-                    <span
-                        className="flex shrink-0 items-center gap-0.5"
-                        title={new Date(entry.createdAt).toLocaleString()}
-                    >
-                        <HiOutlineClock className="h-2.5 w-2.5" />
-                        {timeAgo(entry.createdAt)}
-                    </span>
+                    <Tooltip label={new Date(entry.createdAt).toLocaleString()}>
+                        <span className="flex shrink-0 items-center gap-0.5">
+                            <HiOutlineClock className="h-2.5 w-2.5" />
+                            {timeAgo(entry.createdAt)}
+                        </span>
+                    </Tooltip>
 
                     {reverted && (
                         <>
@@ -253,7 +324,7 @@ export function ActivityRow({
                                         type="button"
                                         onClick={handleRevert}
                                         disabled={reverting}
-                                        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold text-accent transition hover:bg-accent/10 disabled:opacity-50 cursor-pointer"
+                                        className="flex items-center gap-1 rounded-md bg-blue-600 px-2 py-0.5 text-[10px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
                                     >
                                         {reverting && (
                                             <AiOutlineLoading3Quarters className="h-2.5 w-2.5 animate-spin" />
@@ -273,7 +344,6 @@ export function ActivityRow({
                                 <button
                                     type="button"
                                     onClick={() => setConfirming(true)}
-                                    title="Undo this change"
                                     className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-muted opacity-0 transition hover:bg-control hover:text-slate-900 group-hover/row:opacity-100 focus:opacity-100 cursor-pointer"
                                 >
                                     <HiOutlineArrowUturnLeft className="h-2.5 w-2.5" />
@@ -285,12 +355,9 @@ export function ActivityRow({
 
                     {/* Why a row cannot be undone, on hover of the muted marker */}
                     {!showRevert && !reverted && entry.revertBlocker && (
-                        <span
-                            className="ml-auto shrink-0 cursor-help text-muted/60"
-                            title={entry.revertBlocker}
-                        >
-                            —
-                        </span>
+                        <Tooltip label={entry.revertBlocker}>
+                            <span className="ml-auto shrink-0 cursor-help text-muted/60">—</span>
+                        </Tooltip>
                     )}
                 </div>
 

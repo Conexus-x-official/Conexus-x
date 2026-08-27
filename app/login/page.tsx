@@ -1,20 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveToken, saveUser } from "../../lib/auth";
 import logo from "@/app/assets/Logo.png";
 import Image from "next/image";
-import { Eye, EyeOff, ArrowRight, Loader2, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import GoogleButton from "@/components/ui/buttons/googleauth";
+import { NEXT_PARAM } from "@/lib/authRoutes";
+import AuthShowcase from "@/components/auth/AuthShowcase";
 import env from "@/config/env";
-
-const slides = [
-    { heading: "Collaborate in real time", desc: "Work together with your team without missing a beat." },
-    { heading: "Track every project", desc: "Keep tasks, files, and deadlines organized in one place." },
-    { heading: "Stay in sync", desc: "See updates the moment they happen, wherever you are." }
-];
 
 export default function LoginPage() {
     const router = useRouter();
@@ -22,14 +18,6 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const [slide, setSlide] = useState(0);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setSlide((prev) => (prev + 1) % slides.length);
-        }, 3000);
-        return () => clearInterval(interval);
-    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -41,7 +29,7 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const response = await fetch("http://localhost:4040/api/auth/login", {
+            const response = await fetch(`${env.NEXT_PUBLIC_API_URL}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData)
@@ -60,7 +48,21 @@ export default function LoginPage() {
 
             // No stash to replay any more: the funnel runs signed in, straight
             // after email verification, and has already built the account.
-            router.push("/Home");
+            //
+            // Resume wherever the guard interrupted them. Read from
+            // window.location rather than useSearchParams: this runs on submit,
+            // so it needs no Suspense boundary and does not push this page off
+            // the static prerender it currently gets.
+            //
+            // ONLY a path is accepted. A value starting "//" or carrying a
+            // scheme is someone else's origin, and honouring it is exactly how
+            // a "next" parameter becomes an open redirect that phishes a user
+            // straight after they have typed their password.
+            const wanted = new URLSearchParams(window.location.search).get(NEXT_PARAM);
+            const safeNext =
+                wanted && wanted.startsWith("/") && !wanted.startsWith("//") ? wanted : "/Home";
+
+            router.push(safeNext);
         } catch (err: any) {
             setError("Cannot connect to the server. Please verify your backend is running.");
             setLoading(false);
@@ -74,24 +76,7 @@ export default function LoginPage() {
     return (
         <section className="w-full h-full bg-canvas p-3">
             <div className="flex gap-3 w-full h-full">
-                <div className="hidden lg:flex lg:w-[45%] relative flex-col items-center justify-center border bg-accent rounded-2xl">
-                    <Link href="/" className="cursor-pointer">
-                        <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-card shadow-sm">
-                            <Image src={logo} alt="Logo" priority />
-                        </div>
-                    </Link>
-
-                    <div className="mt-6 max-w-xs text-center">
-                        <h2 className="text-lg font-semibold font-google-sans">{slides[slide].heading}</h2>
-                        <p className="mt-2 text-sm font-google-sans">{slides[slide].desc}</p>
-                    </div>
-
-                    <div className="absolute bottom-10 flex gap-2">
-                        {slides.map((_, i) => (
-                            <span key={i} onClick={() => setSlide(i)} className={`h-1.5 w-1.5 rounded-full cursor-pointer ${i === slide ? "bg-card" : "bg-black"}`} />
-                        ))}
-                    </div>
-                </div>
+                <AuthShowcase />
 
                 <div className="w-full lg:w-[55%] flex flex-col px-6 sm:px-16 py-8 rounded-xl bg-card flex-1">
                     <div className="flex items-center justify-between">
@@ -157,7 +142,7 @@ export default function LoginPage() {
                                     </div>
                                 </div>
 
-                                <button type="submit" disabled={loading} className="w-full mt-2 flex items-center justify-center gap-2 rounded-lg bg-accent py-3 text-sm font-semibold  transition hover:bg-accent disabled:bg-slate-400 disabled:cursor-not-allowed cursor-pointer font-google-sans">
+                                <button type="submit" disabled={loading} className="w-full mt-2 flex items-center justify-center gap-2 rounded-lg bg-accent py-3 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:bg-slate-400 disabled:cursor-not-allowed cursor-pointer font-google-sans">
                                     {loading ? (
                                         <Loader2 className="h-5 w-5 animate-spin" />
                                     ) : (

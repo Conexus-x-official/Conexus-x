@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { useRealtimeRoom } from "@/store/useRealtimeRoom";
 import { ImUngroup } from "react-icons/im";
 import { FaPlus } from "react-icons/fa";
 
@@ -52,6 +53,10 @@ type DateFilter = (typeof DATE_FILTERS)[number]["value"];
 export default function WorkspacePage() {
     const params = useParams();
     const workspaceId = params.id as string;
+
+    // This page can be reached by a direct link before the sidebar has settled
+    // an active workspace, so it asks for its own room rather than assuming.
+    useRealtimeRoom({ workspaceId });
 
     /**
      * Opening this page IS the visit, so it is recorded here rather than in

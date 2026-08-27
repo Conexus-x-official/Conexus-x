@@ -116,9 +116,9 @@ export default function ModulePicker({
                 /* CONTROL_HEIGHT, not padding: this sits beside the scope
                    toggle, and two controls whose heights come from unrelated
                    padding sums only line up by luck. Both are pinned instead. */
-                className="flex h-10 items-center gap-2.5 rounded-xl border border-slate-200 bg-card px-3 text-left transition hover:border-accent/50 cursor-pointer font-dmsans"
+                className="flex h-10 items-center gap-2.5 rounded-xl border border-slate-200 bg-card px-3 text-left transition hover:border-slate-400 cursor-pointer font-dmsans"
             >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-card text-slate-600">
                     <TbLayoutGrid className="h-3.5 w-3.5" />
                 </span>
 
@@ -178,7 +178,7 @@ export default function ModulePicker({
                                             aria-selected={active}
                                             onClick={() => pick(module._id)}
                                             className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium transition cursor-pointer ${active
-                                                ? "bg-accent/10 text-accent"
+                                                ? "nav-glass text-slate-900"
                                                 : "text-slate-700 hover:bg-control"
                                                 }`}
                                         >

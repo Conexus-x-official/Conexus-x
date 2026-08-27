@@ -16,11 +16,13 @@ import {
     ShieldAlert,
     ShieldCheck,
     MessageSquareText,
+    Zap,
 } from "lucide-react";
 
 import {
     useSendAgentMessageMutation,
     useConfirmAgentActionMutation,
+    useGetAgentCreditsQuery,
     type AgentTurn,
     type AppliedAction,
     type BlueprintPlan,
@@ -337,6 +339,22 @@ export default function AgentChat({
     const [sendAgentMessage, { isLoading }] = useSendAgentMessageMutation();
 
     /**
+     * The balance, read from the server and never computed here.
+     *
+     * Every chat turn invalidates AI_CREDITS_TAG, so this refetches itself
+     * after each message — which is what keeps the number on screen the one
+     * the server would actually enforce on the next send.
+     */
+    const { data: credits } = useGetAgentCreditsQuery();
+
+    const outOfCredits = credits?.exhausted ?? false;
+
+    // A fifth left is the point at which "you are running low" is still
+    // actionable rather than an alarm about something already over.
+    const lowCredits =
+        !!credits && !credits.exhausted && credits.remaining <= credits.allowance * 0.2;
+
+    /**
      * The panel header shows this, so it has to be published rather than kept
      * local. Derived from what is actually true right now — a request in
      * flight, or the last turn having failed — never stored, so a fault can
@@ -380,6 +398,12 @@ export default function AgentChat({
     const send = async (raw?: string) => {
         const text = (raw ?? draft).trim();
         if (!text || isLoading) return;
+
+        // Guarded HERE and not only on the button: send() is also called from
+        // the Enter key and from the suggestion chips, and a disabled button is
+        // not a guard — it is a hint. The server refuses this anyway with a
+        // 402; the point of the client check is to not waste the round trip.
+        if (outOfCredits) return;
 
         const now = Date.now();
         setDraft("");
@@ -769,16 +793,94 @@ export default function AgentChat({
                         <span />
                     )}
 
-                    {/* Spend is on screen, not in a bill at the end of the month. */}
-                    {spentUsd > 0 && (
+                    {/*
+                        Spend is on screen, not in a bill at the end of the
+                        month — and it is the REMAINING BALANCE that leads,
+                        because that is the number that decides whether the next
+                        message will be accepted. Session spend stays as the
+                        smaller second line only once there is any.
+                    */}
+                    {credits && (
                         <span
-                            title="Estimated spend this session"
-                            className="shrink-0 text-[10px] font-medium text-muted"
+                            title={`${credits.used} of ${credits.allowance} credits used on the ${credits.planLabel} plan${spentUsd > 0 ? ` · $${spentUsd.toFixed(4)} this session` : ""}`}
+                            className="flex shrink-0 items-center gap-1.5"
                         >
-                            ${spentUsd.toFixed(4)}
+                            <Zap
+                                className={`h-3 w-3 ${
+                                    outOfCredits
+                                        ? "text-red-600"
+                                        : lowCredits
+                                          ? "text-amber-600"
+                                          : "text-muted"
+                                }`}
+                            />
+                            <span
+                                className={`text-[10px] font-semibold tabular-nums ${
+                                    outOfCredits
+                                        ? "text-red-600"
+                                        : lowCredits
+                                          ? "text-amber-600"
+                                          : "text-muted"
+                                }`}
+                            >
+                                {credits.remaining.toLocaleString()}
+                            </span>
+                            {/*
+                                A bar, not just a digit: "312 credits" means
+                                nothing without the ceiling it is measured
+                                against, and the proportion is the part people
+                                actually read.
+                            */}
+                            <span className="h-1 w-10 overflow-hidden rounded-full bg-control">
+                                <span
+                                    className={`block h-full rounded-full transition-all duration-500 ${
+                                        outOfCredits
+                                            ? "bg-red-600"
+                                            : lowCredits
+                                              ? "bg-amber-500"
+                                              : "bg-accent"
+                                    }`}
+                                    style={{
+                                        width: `${Math.min(100, Math.max(0, (credits.remaining / Math.max(1, credits.allowance)) * 100))}%`
+                                    }}
+                                />
+                            </span>
                         </span>
                     )}
                 </div>
+
+                {/*
+                    The wall. Shown INSTEAD of letting someone type a message
+                    that the server has already decided it will refuse — a
+                    composer that accepts input and then rejects it is the
+                    version of this that wastes the user's time and teaches
+                    them the app is broken.
+                */}
+                {outOfCredits && credits && (
+                    <div className="mb-2 rounded-xl border border-amber-100 bg-amber-50 p-3">
+                        <p className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-600">
+                            <Zap className="h-3 w-3" />
+                            You have used all {credits.allowance.toLocaleString()} credits
+                        </p>
+                        <p className="mt-1 text-[10px] leading-relaxed text-amber-600/90">
+                            On the {credits.planLabel} plan. They reset on{" "}
+                            {new Date(credits.resetAt).toLocaleDateString(undefined, {
+                                month: "long",
+                                day: "numeric"
+                            })}
+                            {credits.plan === "free" ? " — or upgrade for more." : "."}
+                        </p>
+
+                        {credits.plan === "free" && (
+                            <a
+                                href="/pricing"
+                                className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[10px] font-semibold text-white transition-colors hover:bg-accent-hover"
+                            >
+                                See plans
+                            </a>
+                        )}
+                    </div>
+                )}
 
                 <div className="rounded-xl border border-hairline bg-control/40 transition focus-within:border-accent focus-within:bg-card">
                     <textarea
@@ -792,7 +894,12 @@ export default function AgentChat({
                                 send();
                             }
                         }}
-                        placeholder="Tell Aquiline what to build…"
+                        disabled={outOfCredits}
+                        placeholder={
+                            outOfCredits
+                                ? "Out of AI credits"
+                                : "Tell Aquiline what to build…"
+                        }
                         className="w-full resize-none bg-transparent px-3 pt-2.5 text-xs leading-relaxed text-slate-800 outline-none placeholder:text-muted"
                     />
 
@@ -804,7 +911,7 @@ export default function AgentChat({
                         <button
                             type="button"
                             onClick={() => send()}
-                            disabled={!draft.trim() || isLoading}
+                            disabled={!draft.trim() || isLoading || outOfCredits}
                             aria-label="Send"
                             title="Send"
                             className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"

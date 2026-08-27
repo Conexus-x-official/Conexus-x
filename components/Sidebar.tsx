@@ -22,6 +22,7 @@ import {
 } from "react-icons/hi2";
 import {
     TbCards,
+    TbMessages,
     TbPlug,
     TbRoute,
     TbLayoutSidebarLeftCollapse,
@@ -33,6 +34,7 @@ import {
     WorkspaceIcon,
     searchWorkspaceIcons
 } from "@/lib/workspaceIcons";
+import NavTile from "./ui/helpers/navTile";
 import WorkspaceSwitcher from "./ui/menu/workspaceSwitcher";
 import { useUpdatePreferencesMutation } from "@/store/api/preferences.api";
 import { readUser, readUserServer, subscribeUser, updateUser } from "@/lib/auth";
@@ -74,6 +76,11 @@ const RAIL_WIDTH = 68;
 /**
  * One row of the collapsed rail: a square target that still navigates. The name
  * survives as a native tooltip, which is the only label a 68px rail has room for.
+ *
+ * The button IS the tile here — it is already a 36px square, so wrapping a
+ * second bordered square inside it would draw the same outline twice. Active
+ * swaps the fill for `nav-glass` and keeps a transparent border, so the row
+ * does not resize by 2px when you land on it.
  */
 function RailButton({
     label,
@@ -92,9 +99,9 @@ function RailButton({
             onClick={onClick}
             title={label}
             aria-label={label}
-            className={`flex h-9 w-9 items-center justify-center rounded-lg transition cursor-pointer ${active
-                ? "nav-glass text-foreground"
-                : "text-slate-600 hover:bg-control/60 hover:text-slate-900"
+            className={`flex h-9 w-9 items-center justify-center rounded-lg border transition cursor-pointer ${active
+                ? "nav-glass border-transparent text-foreground"
+                : "border-slate-300 bg-card text-slate-600 hover:bg-control/60 hover:text-slate-900"
                 }`}
         >
             {children}
@@ -133,11 +140,9 @@ function SectionHeader({
                 type="button"
                 onClick={onToggle}
                 aria-expanded={open}
-                className="flex flex-1 items-center gap-2.5 rounded-lg py-2 text-left cursor-pointer"
+                className="flex flex-1 items-center gap-2.5 rounded-lg py-1.5 text-left cursor-pointer"
             >
-                <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-slate-600">
-                    {icon}
-                </span>
+                <NavTile className="h-7 w-7 rounded-lg text-slate-600">{icon}</NavTile>
 
                 <span className="text-sm font-medium text-slate-600">{label}</span>
 
@@ -296,6 +301,7 @@ export default function Sidebar() {
     const iconResults = searchWorkspaceIcons(iconQuery);
 
     const isExtensionsActive = pathname.startsWith("/Extensions");
+    const isMeetActive = pathname.startsWith("/Meet");
     const isAutomationActive = pathname.includes("/automation");
     const automationHref = workspaceId ? `/workspace/${workspaceId}/automation` : "";
 
@@ -338,19 +344,27 @@ export default function Sidebar() {
                     className="absolute inset-y-0 left-0 flex flex-col"
                 >
 
-            {/* ── Brand + collapse toggle ───────────────────────────── */}
+            {/* ── Brand + collapse toggle ─────────────────────────────
+
+                 The logo TILE keeps the same box in both states: 12px in from the
+                 shell edge, 22px down, 44px square — only what sits BESIDE it
+                 changes. It used to carry px-2 py-1.5 when expanded and p-1 when
+                 collapsed, so mid cross-fade the tile stepped 8px left and 2px up:
+                 the one element that should be the anchor was the one thing
+                 visibly jumping. 12px is also what centres it in the 68px rail,
+                 on the same centre line the RailButtons below sit on. */}
             <div className="px-3 pt-4 pb-3">
                 <div className={`flex items-center gap-1 ${collapsed ? "flex-col" : ""}`}>
                     <button
                         type="button"
                         onClick={() => router.push("/Home")}
                         title="Home"
-                        className={`group flex items-center rounded-xl text-left transition hover:bg-control/60 cursor-pointer ${collapsed ? "justify-center p-1" : "flex-1 gap-2.5 px-2 py-1.5"
+                        className={`group flex h-11 items-center rounded-xl text-left transition  cursor-pointer ${collapsed ? "w-11 justify-center" : "flex-1 gap-2.5 pr-2"
                             }`}
                     >
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-control/70 transition group-hover:bg-control">
+                        <NavTile className="h-11 w-11 rounded-xl">
                             <Image src={logo} alt="Logo" priority className="h-8 w-8 object-contain" />
-                        </span>
+                        </NavTile>
 
                         {!collapsed && (
                             <span className="min-w-0">
@@ -415,6 +429,14 @@ export default function Sidebar() {
                             <TbPlug className="h-[18px] w-[18px]" />
                         </RailButton>
 
+                        <RailButton
+                            label="Conexus Meet"
+                            active={isMeetActive}
+                            onClick={() => router.push("/Meet")}
+                        >
+                            <TbMessages className="h-[18px] w-[18px]" />
+                        </RailButton>
+
                         {automationHref && (
                             <RailButton
                                 label="Automations"
@@ -454,24 +476,45 @@ export default function Sidebar() {
                     "Apps" reads as a launcher of things that already exist. */}
                 <Link
                     href="/Extensions"
-                    className={`flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm transition cursor-pointer ${isExtensionsActive
+                    className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition cursor-pointer ${isExtensionsActive
                         ? "nav-glass font-semibold text-foreground"
                         : "font-medium text-slate-600 hover:bg-control/60 hover:text-slate-900"
                         }`}
                 >
-                    <TbPlug className="h-4.5 w-4.5 shrink-0" />
+                    <NavTile>
+                        <TbPlug className="h-4 w-4" />
+                    </NavTile>
                     Extensions
+                </Link>
+
+                {/* Conexus Meet — chat and calls with the people in this
+                    workspace. Sits directly under Extensions because both are
+                    app-level: they belong to the account, not to whichever
+                    module happens to be open. */}
+                <Link
+                    href="/Meet"
+                    className={`mt-px flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition cursor-pointer ${isMeetActive
+                        ? "nav-glass font-semibold text-foreground"
+                        : "font-medium text-slate-600 hover:bg-control/60 hover:text-slate-900"
+                        }`}
+                >
+                    <NavTile>
+                        <TbMessages className="h-4 w-4" />
+                    </NavTile>
+                    Conexus Meet
                 </Link>
 
                 {automationHref && (
                     <Link
                         href={automationHref}
-                        className={`mt-px flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm transition cursor-pointer ${isAutomationActive
+                        className={`mt-px flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition cursor-pointer ${isAutomationActive
                             ? "nav-glass font-semibold text-foreground"
                             : "font-medium text-slate-600 hover:bg-control/60 hover:text-slate-900"
                             }`}
                     >
-                        <TbRoute className="h-4.5 w-4.5 shrink-0" />
+                        <NavTile>
+                            <TbRoute className="h-4 w-4" />
+                        </NavTile>
                         Automations
                     </Link>
                 )}
@@ -485,7 +528,7 @@ export default function Sidebar() {
                 {/* Modules — of the workspace named in the switcher above. */}
                 <div>
                     <SectionHeader
-                        icon={<TbCards className="h-[18px] w-[18px]" />}
+                        icon={<TbCards className="h-4 w-4" />}
                         label="Modules"
                         count={modules.length}
                         open={openModule}

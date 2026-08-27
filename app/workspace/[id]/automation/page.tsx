@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
+import { useRealtimeRoom } from "@/store/useRealtimeRoom";
 import Link from "next/link";
 import { TbBuildingCommunity, TbLayoutGrid } from "react-icons/tb";
 import { HiOutlineClock, HiOutlinePlus } from "react-icons/hi2";
@@ -13,8 +14,9 @@ import BackButton from "@/components/ui/buttons/backButton";
 import AutomationCard from "@/components/automation/AutomationCard";
 import ModulePicker from "@/components/automation/ModulePicker";
 import type { Vocabulary } from "@/components/automation/shared";
+import NavTile from "@/components/ui/helpers/navTile";
+import { WorkspaceIcon } from "@/lib/workspaceIcons";
 
-import { PALETTE } from "@/data/data";
 import { useGetWorkspaceQuery } from "@/store/api/workspaces.api";
 import { useGetModulesQuery } from "@/store/api/modules.api";
 import { useGetColumnsQuery, useGetSubColumnsQuery } from "@/store/api/columns.api";
@@ -29,14 +31,6 @@ import {
     type Automation,
     type AutomationScope
 } from "@/store/api/automations.api";
-
-function colorFor(id: string) {
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) {
-        hash = id.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return PALETTE[Math.abs(hash) % PALETTE.length];
-}
 
 /**
  * Which modules a recipe is allowed to touch.
@@ -58,6 +52,8 @@ interface BuilderSession {
 export default function AutomationPage() {
     const params = useParams();
     const workspaceId = params.id as string;
+
+    useRealtimeRoom({ workspaceId });
 
     const { data: workspace } = useGetWorkspaceQuery(workspaceId, { skip: !workspaceId });
     const { data: modules = [] } = useGetModulesQuery(workspaceId, { skip: !workspaceId });
@@ -147,9 +143,6 @@ export default function AutomationPage() {
         deleteAutomation({ automationId: automation._id, ...listScope });
     };
 
-    const workspaceColor = colorFor(String(workspaceId));
-    const workspaceInitial = (workspace?.name || "W").trim().charAt(0).toUpperCase();
-
     return (
         <section className="flex bg-canvas">
 
@@ -167,15 +160,17 @@ export default function AutomationPage() {
                                 fallbackHref={workspaceId ? `/workspace/${workspaceId}` : "/Home"}
                             />
 
-                            <div
-                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold shadow-sm font-dmsans"
-                                style={{
-                                    backgroundColor: workspaceColor.bg,
-                                    color: workspaceColor.accent
-                                }}
-                            >
-                                {workspaceInitial}
-                            </div>
+                            {/* NO INITIAL, NO HASHED COLOUR. "S" in a random
+                                square says nothing the word "Sales" beside it
+                                does not already say, and the hue was picked by
+                                hashing an id, so it carried no meaning at all —
+                                it was just a loud sticker in the corner of the
+                                navbar. This is the workspace's OWN icon in the
+                                shared tile (LAYOUT.md §7), the same one the
+                                sidebar and the banner draw. */}
+                            <NavTile className="h-10 w-10 rounded-xl text-slate-600">
+                                <WorkspaceIcon iconKey={workspace?.icon} className="h-5 w-5" />
+                            </NavTile>
 
                             <div className="min-w-0">
                                 <h1 className="text-sm font-semibold text-slate-900 truncate font-dmsans">
@@ -253,7 +248,7 @@ export default function AutomationPage() {
                                                     key={value}
                                                     onClick={() => setScope(value)}
                                                     className={`flex h-full items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition cursor-pointer font-dmsans ${scope === value
-                                                        ? "bg-accent text-white"
+                                                        ? "nav-glass text-slate-900"
                                                         : "text-muted hover:bg-control hover:text-slate-900"
                                                         }`}
                                                 >
@@ -272,9 +267,15 @@ export default function AutomationPage() {
                                     </div>
                                 </div>
 
+                                {/* The page's one primary action, but NOT a
+                                    saturated fill: a list of quiet cards under a
+                                    coral block made the button the loudest thing
+                                    on a screen you visit to read. Weight and the
+                                    glass panel carry it instead — same treatment
+                                    the sidebar uses for the row you are on. */}
                                 <button
                                     onClick={openNew}
-                                    className="flex shrink-0 items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover cursor-pointer font-dmsans"
+                                    className="nav-glass flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-900 transition cursor-pointer font-dmsans"
                                 >
                                     <HiOutlinePlus className="h-4 w-4" />
                                     New Automation

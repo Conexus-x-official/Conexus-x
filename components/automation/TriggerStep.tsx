@@ -47,7 +47,7 @@ export default function TriggerStep({
         });
 
     return (
-        <div className="rounded-xl border border-slate-200 bg-card p-4">
+        <div className="flex h-full flex-col rounded-xl border border-slate-200 bg-card p-4">
             <SentenceLine keyword="When">
                 <SelectBlank
                     value={trigger.type}

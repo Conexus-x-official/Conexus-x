@@ -50,7 +50,7 @@ export default function AutomationCard({
                             decides which modules it can touch. */}
                         <span
                             className={`inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold ${isWorkspace
-                                ? "bg-accent/10 text-accent"
+                                ? "nav-glass text-slate-800"
                                 : "bg-control text-muted"
                                 }`}
                         >
@@ -98,7 +98,7 @@ export default function AutomationCard({
                         title={automation.isActive ? "Pause" : "Resume"}
                         className={`rounded-lg px-2 py-1 text-[11px] font-semibold transition cursor-pointer ${automation.isActive
                             ? "text-muted hover:bg-control hover:text-slate-900"
-                            : "text-accent hover:bg-accent/10"
+                            : "text-slate-900 hover:bg-control"
                             }`}
                     >
                         {automation.isActive ? "Pause" : "Resume"}

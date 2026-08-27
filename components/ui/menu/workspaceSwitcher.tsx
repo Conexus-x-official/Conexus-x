@@ -6,6 +6,7 @@ import { HiCheck, HiChevronUpDown, HiOutlineMagnifyingGlass } from "react-icons/
 import { RiAddLine } from "react-icons/ri";
 
 import { WorkspaceIcon } from "@/lib/workspaceIcons";
+import NavTile from "../helpers/navTile";
 import type { Workspace } from "@/store/types";
 
 /**
@@ -164,12 +165,21 @@ export default function WorkspaceSwitcher({
                         }`
                 }
             >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-control text-body">
-                    <WorkspaceIcon
-                        iconKey={active?.icon}
-                        className={collapsed ? "h-[18px] w-[18px]" : "h-4 w-4"}
-                    />
-                </span>
+                {/* Same outlined tile as the brand mark and the nav rows — see
+                    LAYOUT.md §7 "Icon tile". It used to be a filled bg-control
+                    square, which made the workspace the one icon in the sidebar
+                    drawn a different way from every icon above and below it. */}
+                {collapsed ? (
+                    /* In the rail the BUTTON is already the 36px square (and it
+                       is always "active", so it wears nav-glass like an active
+                       RailButton) — a second bordered square inside it would
+                       draw the same outline twice. */
+                    <WorkspaceIcon iconKey={active?.icon} className="h-[18px] w-[18px]" />
+                ) : (
+                    <NavTile className="h-8 w-8 rounded-lg text-body">
+                        <WorkspaceIcon iconKey={active?.icon} className="h-4 w-4" />
+                    </NavTile>
+                )}
 
                 {!collapsed && (
                     <>

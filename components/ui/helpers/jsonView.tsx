@@ -3,6 +3,8 @@
 import { Fragment, ReactNode, useState } from "react";
 import { HiOutlineCheck, HiOutlineClipboardDocument } from "react-icons/hi2";
 
+import { SCROLLBAR } from "./scrollbar";
+
 /**
  * JSON tokens, coloured with the brand palette (LAYOUT.md §4.2).
  *
@@ -111,7 +113,7 @@ export function JsonView({
 
     return (
         <pre
-            className={`overflow-auto rounded-xl bg-panel p-4 font-mono text-xs leading-relaxed text-slate-700 ${className}`}
+            className={`overflow-auto rounded-xl bg-panel p-4 font-mono text-xs leading-relaxed text-slate-700 ${SCROLLBAR} ${className}`}
         >
             {highlight(json)}
         </pre>
@@ -139,7 +141,7 @@ export function CodeBlock({
                 <CopyButton value={copyValue ?? code} />
             </div>
 
-            <pre className="overflow-x-auto px-4 py-3 font-mono text-xs leading-relaxed text-slate-700">
+            <pre className={`overflow-x-auto px-4 py-3 font-mono text-xs leading-relaxed text-slate-700 ${SCROLLBAR}`}>
                 {code}
             </pre>
         </div>

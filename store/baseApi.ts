@@ -1,6 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import env from "@/config/env";
 import { getToken } from "@/lib/auth";
+import { getSocketId } from "@/lib/socket";
 
 /**
  * Every mutation that the server audits must carry this tag, otherwise the
@@ -8,6 +9,14 @@ import { getToken } from "@/lib/auth";
  * new entries. It is a bare LIST id so one tag covers every workspace.
  */
 export const ACTIVITY_TAG = { type: "Activity" as const, id: "LIST" };
+
+/**
+ * The signed-in account's AI credit balance.
+ *
+ * One tag with no id — there is exactly one balance per session, and every
+ * agent turn spends from it. Anything that costs money invalidates this.
+ */
+export const AI_CREDITS_TAG = { type: "AiCredits" as const, id: "SELF" };
 
 /**
  * The single shared cache instance. Every resource file injects its endpoints
@@ -23,6 +32,20 @@ export const baseApi = createApi({
             if (token) {
                 headers.set("Authorization", `Bearer ${token}`);
             }
+
+            /**
+             * WHO IS ASKING, so the push layer can leave them out of the
+             * broadcast their own request causes. This client already applied
+             * the change optimistically; echoing it back would at best be a
+             * wasted patch and at worst fight a still-pending one. The server
+             * excludes this socket at the emit, so the bytes are never sent —
+             * see emitChange() / originOf() in the backend.
+             */
+            const socketId = getSocketId();
+            if (socketId) {
+                headers.set("x-socket-id", socketId);
+            }
+
             return headers;
         }
     }),
@@ -38,7 +61,12 @@ export const baseApi = createApi({
         "Amendment",
         "Activity",
         "Automation",
-        "ModuleAccess"
+        "ModuleAccess",
+        // Conexus Meet: the thread list, and one thread's transcript.
+        "Conversation",
+        "Message",
+        // The signed-in account's AI spending balance.
+        "AiCredits"
     ],
 
     keepUnusedDataFor: 120,        // seconds a cache entry survives with no subscriber
