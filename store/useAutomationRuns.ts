@@ -20,10 +20,14 @@ import { useGetActivityQuery, type ActivityEntry } from "./api/activity.api";
  * briefly a second endpoint returning the same rows in a different shape; it
  * was deleted, because two read paths over one store is how the two drift.
  *
- * There is no realtime layer, so this polls while the tab is focused. That is
- * the honest ceiling: a run shows up within POLL_MS, not instantly.
+ * NO LONGER POLLS. Every activity row is pushed the moment it is written (the
+ * emit lives in logActivity itself, so it covers the engine as well as every
+ * controller), and this query's ACTIVITY tag is invalidated by the socket
+ * bridge — so the same cache entry refills on the same trigger it always did,
+ * just on a push instead of a 10s timer. The announce-once logic below is
+ * unchanged and still needed: an invalidated refetch returns the same rows
+ * repeatedly, exactly as a poll did.
  */
-const POLL_MS = 10_000;
 
 /** Enough to catch a bulk edit's worth of runs between two polls. */
 const PAGE = 15;
@@ -39,11 +43,7 @@ export function useAutomationRuns(workspaceId: string, moduleId: string) {
 
     const { data } = useGetActivityQuery(
         { workspaceId, moduleId, source: "automation", limit: PAGE },
-        {
-            skip: !workspaceId || !moduleId,
-            pollingInterval: POLL_MS,
-            skipPollingIfUnfocused: true
-        }
+        { skip: !workspaceId || !moduleId }
     );
 
     useEffect(() => {

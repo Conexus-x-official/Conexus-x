@@ -56,6 +56,49 @@
       var(--brand-gold) 0%,
       var(--brand-orange) 50%,
       var(--brand-red) 100%);
+
+  /* -- The public site's primary action ---------------------------------
+     A flat --accent at button size reads as neon: one saturated block with
+     nothing behind it, which is the note a CRM landing page can least afford.
+     This is the SAME hue family walked across three adjacent brand stops, so
+     the button gains depth without becoming a second accent colour - the
+     mistake LAYOUT.md 11.1 records as "four coral variants".
+
+     It stops at violet on purpose. The full --gradient-brand runs cyan to
+     magenta, and both of those ends drop white ink to roughly 3.5:1; every
+     stop below clears 6:1, so the label stays legible across the whole sweep.
+
+     THE APP'S --accent IS UNTOUCHED. This is the marketing surface only, and
+     swapping these two declarations is the entire change if it should ever go
+     back to a flat fill. */
+  --gradient-cta: linear-gradient(135deg,
+      var(--brand-deep-blue) 0%,
+      var(--brand-purple) 55%,
+      var(--brand-violet) 100%);
+
+  /* -- The sign-in / sign-up showcase panel ------------------------------
+     A DEEP surface, not the flat --accent fill it replaces. Half a screen of
+     one saturated hue has nowhere for the eye to rest, and it forced the panel
+     to fight the product screenshot sitting on top of it; ink with two soft
+     brand glows lets that screenshot read as the brightest thing there, which
+     is the entire job of the panel.
+
+     Layered translucent literals rather than color-mix over custom properties:
+     Lightning CSS has collapsed that form on this codebase before.
+
+     Brand-constant on purpose. It is declared on :root ONLY and no theme class
+     restates it, so the panel is the same dark in .light and .dark - the ink on
+     it is text-white either way, and a themed surface would have flipped one of
+     the two into unreadable. */
+  --gradient-auth:
+      radial-gradient(90% 70% at 12% 8%, rgb(0 108 255 / 0.38) 0%, transparent 60%),
+      radial-gradient(80% 65% at 88% 96%, rgb(255 0 212 / 0.22) 0%, transparent 65%),
+      linear-gradient(155deg, #0a0618 0%, #170a35 50%, #240c50 100%);
+
+  --gradient-cta-hover: linear-gradient(135deg,
+      #002bcc 0%,
+      #5800d6 55%,
+      #7300d6 100%);
 }
 
 :root,
@@ -317,6 +360,27 @@
 
 .brand-gradient-warm {
   background-image: var(--gradient-brand-warm);
+}
+
+/* The public site's primary button. A real class rather than a Tailwind
+   arbitrary value: the hover state has to swap the whole background-image, and
+   the utility form of that is unreadable at every call site that needs it.
+
+   DO NOT write Tailwind arbitrary-value syntax in the comments in this file.
+   A square-bracket candidate inside a CSS comment crashed the Turbopack CSS
+   worker outright (a panic, not a parse error naming the line), which is a
+   long way to travel to find a comment. */
+.cta-gradient {
+  background-image: var(--gradient-cta);
+}
+
+/* The auth pages' showcase panel. See --gradient-auth above. */
+.auth-panel {
+  background-image: var(--gradient-auth);
+}
+
+.cta-gradient:hover {
+  background-image: var(--gradient-cta-hover);
 }
 
 .brand-gradient-text {

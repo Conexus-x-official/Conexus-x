@@ -5,7 +5,7 @@ export interface PresenceResponse {
     message?: string;
     /** What the user picked. */
     status: UserStatus;
-    /** What everyone else sees — the pick, only while the heartbeat is fresh. */
+    /** What everyone else sees — the pick, only while the user is connected. */
     presence: UserStatus;
     lastSeen?: string;
 }
@@ -23,8 +23,10 @@ export const presenceApi = baseApi.injectEndpoints({
         }),
 
         /**
-         * Doubles as the poll for *other* people's presence: there is no socket
-         * layer, so the minute-ly beat also refreshes every mounted member list.
+         * UNUSED BY THIS APP since presence moved onto the socket — connecting
+         * is the heartbeat now. Kept because POST /auth/heartbeat is still a
+         * public route an API-key integrator may be calling, and deleting the
+         * client binding for a live endpoint buys nothing.
          */
         sendHeartbeat: build.mutation<PresenceResponse, void>({
             query: () => ({ url: "/auth/heartbeat", method: "POST" }),

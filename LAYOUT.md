@@ -34,8 +34,8 @@ Four levels, mapped to elevation. Nothing else.
 
 | Level | Class | Use |
 |---|---|---|
-| 0 | *(none)* | table rows, cells, tab strip |
-| 1 | `shadow-sm` | the page shell card, logo tiles, sidebar surfaces |
+| 0 | *(none)* | table rows, cells, tab strip, **icon tiles** (§7 — they are outlined, not lifted) |
+| 1 | `shadow-sm` | the page shell card, sidebar surfaces |
 | 2 | `shadow-lg` | inline popovers (date detail, context menus) |
 | 3 | `shadow-2xl` | portal modals over the dim layer |
 
@@ -57,7 +57,7 @@ Two 14px pseudo-elements with an inverted corner radius, filled by a hard-edged 
 | `rounded` | 4 | tiny inline pills, swatches |
 | `rounded-md` | 6 | sidebar icon chips |
 | `rounded-lg` | 8 | inputs, icon buttons, list rows |
-| `rounded-xl` | 12 | popovers, cards, logo tiles, primary buttons |
+| `rounded-xl` | 12 | popovers, cards, the brand icon tile (§7), primary buttons |
 | `rounded-2xl` | 16 | modals, pagination buttons |
 | `rounded-l-2xl` | 16 left only | the main content shell — right edge stays flush |
 | `rounded-t-[18px]` | 18 top | active tab only |
@@ -194,6 +194,26 @@ row:    hover:bg-gray-200/40 transition cursor-pointer text-slate-800
 absolute left-6 top-12 z-20 w-64 bg-white rounded-xl shadow-lg border border-gray-200 p-3
 text-xs text-gray-700 animate-in fade-in zoom-in-95 duration-100
 ```
+
+**Icon tile** — an icon in this app is never loose in a row; it sits in an outlined square. [components/ui/helpers/navTile.tsx](components/ui/helpers/navTile.tsx):
+
+```
+bg-card border border-slate-300 flex shrink-0 items-center justify-center
+```
+
+Size and radius are the caller's — same recipe, three scales:
+
+| Scale | Class | Icon | Where |
+|---|---|---|---|
+| Brand | `h-11 w-11 rounded-xl` | 32px | the sidebar logo |
+| Nav row | `h-7 w-7 rounded-lg` | `h-4 w-4` | Extensions, Automations, Modules, the workspace switcher (`h-8 w-8`) |
+| Rail | `h-9 w-9 rounded-lg` | `h-[18px]` | the collapsed rail — see the rule below |
+
+Rules:
+- The tile started as the logo's own treatment. It is now the sidebar's one repeatable idea: **every** primary nav glyph wears it, so the icon column reads as one column instead of four differently-sized marks.
+- `bg-card`, never `bg-white`. The sidebar is itself `bg-card`, so in the light family the tile is invisible apart from its outline — which is the whole effect. A literal white stays white in `.dark` while the border inverts around it (§10.1).
+- `border-slate-300` is left as a palette utility on purpose — every theme already re-points that scale (§10.1, row 2).
+- **When the target is already a square of tile size, the target IS the tile** — do not nest one inside it, or the outline is drawn twice. `RailButton` and the collapsed workspace switcher take `border` + `bg-card` directly, and their active state swaps the fill for `nav-glass` with `border-transparent` so the row does not resize by 2px on selection.
 
 **Icon button**:
 ```

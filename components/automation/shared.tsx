@@ -4,6 +4,10 @@ import type { ReactNode } from "react";
 import type { Collection, Column } from "@/store/types";
 import type { AutomationScope } from "@/store/api/automations.api";
 import type { ColumnScope } from "@/lib/automation/catalog";
+import BlankMenu, { type BlankGroup, type BlankOption } from "./BlankMenu";
+import { tokenClass } from "./tokenStyles";
+
+export { tokenClass };
 
 /**
  * The sentence builder's vocabulary and its blanks.
@@ -17,26 +21,17 @@ import type { ColumnScope } from "@/lib/automation/catalog";
  *
  * Every control below is therefore an INLINE token sized to its own content,
  * never a full-width field. An unfilled blank is dashed and muted so it reads
- * as "something goes here"; a filled one is solid accent so it reads as a word
+ * as "something goes here"; a filled one carries the glass panel so it reads as a word
  * in the sentence.
  *
- * They stay native <select>/<input> elements on purpose — keyboard behaviour,
- * mobile pickers and screen-reader labelling all come free, and a hand-built
- * popup would have to re-earn each of them.
+ * They were native <select>/<input> elements at first, because keyboard
+ * behaviour, mobile pickers and screen-reader labelling come free that way.
+ * The picking ones are now BlankMenu instead: a native popup is drawn by the
+ * OS, so it ignored the theme completely in the middle of a themed card, and
+ * once the rule IS the form the list is the thing being read. BlankMenu re-earns
+ * what was given up — ↑/↓, Enter, Escape, type-ahead search and listbox roles.
+ * TextBlank stays a real <input>, because free text is not a menu.
  */
-
-/** Shared by every blank, filled or not. */
-const TOKEN_BASE =
-    "inline-flex max-w-[220px] items-center rounded-md border px-2 py-1 text-xs font-semibold outline-none transition align-middle";
-
-const TOKEN_FILLED =
-    "border-accent/30 bg-accent/10 text-accent hover:border-accent/60 cursor-pointer";
-
-const TOKEN_EMPTY =
-    "border-dashed border-slate-400 bg-transparent text-muted hover:border-accent hover:text-accent cursor-pointer";
-
-export const tokenClass = (filled: boolean) =>
-    `${TOKEN_BASE} ${filled ? TOKEN_FILLED : TOKEN_EMPTY}`;
 
 /** Plain words between the blanks. */
 export function Word({ children }: { children: ReactNode }) {
@@ -112,48 +107,45 @@ export function optionsFor(
     return [];
 }
 
-/** A blank the user picks from a list. */
+/**
+ * A blank the user picks from a list.
+ *
+ * The list itself is BlankMenu — a portalled panel, not a native <select>, so
+ * the popup is themed like everything around it. This wrapper stays because
+ * every other blank below delegates to it: swapping the menu was one change
+ * here, not five.
+ */
 export function SelectBlank({
     value,
     placeholder,
     options,
     groups,
     onChange,
-    title
+    title,
+    allowCustom,
+    customHint
 }: {
     value?: string;
     placeholder: string;
     /** Flat options, or use `groups` for a grouped list. */
-    options?: { value: string; label: string }[];
-    groups?: { label: string; options: { value: string; label: string }[] }[];
+    options?: BlankOption[];
+    groups?: BlankGroup[];
     onChange: (value: string) => void;
     title?: string;
+    allowCustom?: boolean;
+    customHint?: string;
 }) {
     return (
-        <select
-            value={value ?? ""}
+        <BlankMenu
+            value={value}
+            placeholder={placeholder}
+            options={options}
+            groups={groups}
+            onChange={onChange}
             title={title}
-            onChange={(e) => onChange(e.target.value)}
-            className={tokenClass(Boolean(value))}
-        >
-            <option value="">{placeholder}</option>
-
-            {options?.map((o) => (
-                <option key={o.value} value={o.value}>
-                    {o.label}
-                </option>
-            ))}
-
-            {groups?.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                    {group.options.map((o) => (
-                        <option key={o.value} value={o.value}>
-                            {o.label}
-                        </option>
-                    ))}
-                </optgroup>
-            ))}
-        </select>
+            allowCustom={allowCustom}
+            customHint={customHint}
+        />
     );
 }
 
@@ -216,22 +208,23 @@ export function ColumnBlank({
     const list = columnsIn(vocab, scope);
 
     if (vocab.scope === "workspace") {
-        const listId = `column-names-${scope}`;
-
+        /**
+         * Still a NAME, not an id — but no longer a <datalist>, which is the
+         * same OS-drawn popup problem as a native select and, worse, gives no
+         * hint that suggestions exist at all until you start typing. The menu
+         * offers the picked module's column names AND accepts anything typed,
+         * which is the whole point of workspace scope: the name may match a
+         * column on some modules and not others.
+         */
         return (
-            <>
-                <TextBlank
-                    value={columnName}
-                    placeholder={placeholder}
-                    list={listId}
-                    onChange={(name) => onPick({ columnName: name, column: undefined })}
-                />
-                <datalist id={listId}>
-                    {list.map((c) => (
-                        <option key={c._id} value={c.name} />
-                    ))}
-                </datalist>
-            </>
+            <SelectBlank
+                value={columnName}
+                placeholder={placeholder}
+                options={list.map((c) => ({ value: c.name, label: c.name, hint: c.type }))}
+                allowCustom
+                customHint="Use this name"
+                onChange={(name) => onPick({ columnName: name, column: undefined })}
+            />
         );
     }
 
@@ -239,7 +232,7 @@ export function ColumnBlank({
         <SelectBlank
             value={value}
             placeholder={placeholder}
-            options={list.map((c) => ({ value: c._id, label: c.name }))}
+            options={list.map((c) => ({ value: c._id, label: c.name, hint: c.type }))}
             onChange={(id) => onPick({ column: id, columnName: undefined })}
         />
     );
@@ -348,7 +341,7 @@ export function AddLineButton({
         <button
             type="button"
             onClick={onClick}
-            className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-400 px-2 py-1 text-[11px] font-semibold text-muted transition hover:border-accent hover:text-accent cursor-pointer"
+            className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-400 px-2 py-1 text-[11px] font-semibold text-muted transition hover:border-slate-600 hover:bg-control hover:text-slate-900 cursor-pointer"
         >
             + {label}
         </button>

@@ -58,7 +58,7 @@ export default function ActionsStep({
     const remove = (index: number) => onChange(actions.filter((_, i) => i !== index));
 
     return (
-        <div className="space-y-2 rounded-xl border border-slate-200 bg-card p-4">
+        <div className="flex h-full flex-col space-y-2 rounded-xl border border-slate-200 bg-card p-4">
             {actions.map((action, index) => (
                 <ActionLine
                     key={index}

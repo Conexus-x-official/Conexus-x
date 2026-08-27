@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
     HiOutlineCircleStack,
     HiOutlinePlay,
-    HiOutlineKey,
     HiOutlineEye,
     HiOutlineEyeSlash,
     HiChevronLeft,
@@ -21,6 +20,9 @@ import { useGetModulesQuery } from "@/store/api/modules.api";
 import { useGetCollectionsQuery } from "@/store/api/collections.api";
 import { useGetRecordsQuery } from "@/store/api/records.api";
 import { CodeBlock, CopyButton, JsonView } from "./ui/helpers/jsonView";
+import { SCROLLBAR } from "./ui/helpers/scrollbar";
+import EndpointPicker from "./ui/menu/endpointPicker";
+import SelectMenu from "./ui/menu/selectMenu";
 import {
     ENDPOINTS,
     ENDPOINT_GROUPS,
@@ -256,40 +258,77 @@ export default function DataConsole() {
     const keyForSnippet = revealKey ? apiKey ?? "" : maskKey(apiKey);
 
     return (
-        <div className="max-w-[1400px] font-dmsans">
+        /*
+            NO MAX WIDTH. It was capped at 1400px, so collapsing the sidebar
+            gave the extra 220px to the right-hand gutter rather than to the
+            two panels — the rail moved and nothing else did. The console is a
+            pair of columns that both benefit from every pixel: a JSON body and
+            a table are exactly the things a wide screen is for.
 
-            <header className="mb-6">
+            THE PAGE OWNS ITS OWN GUTTER. The developer layout used to add
+            px-8 py-8 and this file spent three rules cancelling it — a bleed
+            on the header, a magic `h-[calc(100vh-8.5rem)]` on the grid to
+            guess back what the header and that padding had taken, and
+            compensating margins downstream. Every one of them was a second
+            copy of a number owned somewhere else, and they drifted the moment
+            either end moved. The layout is bare now, so there is nothing to
+            cancel: h-full is the box, and px-8 is applied by the two things
+            that actually want a gutter.
+        */
+        <div className="flex flex-col font-dmsans lg:h-full">
+
+            {/*
+                STICKY HEADER, and it owns the endpoint choice.
+
+                The catalog used to be a 260px column pinned down the left —
+                a fifth of the screen held permanently for a question asked once
+                per request. It is a dropdown up here now, beside the API key,
+                which is the other thing every request needs; the space it freed
+                is what lets the builder and the response sit side by side.
+
+                px-8 restores the gutter the root cancelled, so the bar's
+                background and its bottom rule run the full width of the scroll
+                container rather than floating inside it. shrink-0 is what
+                makes it the fixed half of the height contract below.
+            */}
+            <header className="sticky top-0 z-20 shrink-0 border-b border-hairline bg-card px-8 pb-2 pt-2">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
+                    <div className="flex flex-col min-w-0 ">
                         <div className="flex items-center gap-2">
-                            <HiOutlineCircleStack className="h-5 w-5 text-slate-700" />
-                            <h1 className="text-2xl font-semibold text-slate-900">
+                            <h1 className="truncate text-lg font-semibold text-slate-900">
                                 Data Console
                             </h1>
                         </div>
 
-                        <p className="mt-1 max-w-2xl text-sm text-slate-500">
-                            Build a request against your own CRM, run it with your API key,
-                            and copy the exact call into your code. Read-only — every
-                            endpoint here is a GET.
-                        </p>
+                        <span className="hidden text-xs text-muted xl:block">
+                            Read-only — every endpoint here is a GET.
+                        </span>
                     </div>
 
-                    <Link
-                        href="/developer/api-key"
-                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-card px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100 cursor-pointer"
-                    >
-                        <HiOutlineKey className="h-4 w-4" />
-                        {keyLoading
-                            ? "Loading key..."
-                            : apiKey
-                                ? maskKey(apiKey)
-                                : "No API key yet"}
-                    </Link>
+                    {/*
+                        THE PICKER SITS WHERE THE KEY CHIP WAS.
+
+                        That chip showed a masked key beside a link to the page
+                        that manages it — a status readout for something that
+                        either works or produces the red banner below, which
+                        says the same thing louder and only when it matters. The
+                        endpoint is the one choice this screen is actually built
+                        around, so it gets the corner instead, and the header
+                        drops from two rows to one.
+                    */}
+                    <EndpointPicker
+                        endpoints={ENDPOINTS}
+                        groups={ENDPOINT_GROUPS}
+                        value={endpoint.id}
+                        onChange={(id) => {
+                            const next = ENDPOINTS.find((item) => item.id === id);
+                            if (next) selectEndpoint(next);
+                        }}
+                    />
                 </div>
 
                 {!keyLoading && !apiKey && (
-                    <div className="mt-4 flex items-start gap-2 rounded-xl border border-[#FF7675]/30 bg-[#FF7675]/10 px-4 py-3 text-sm text-[#FF7675]">
+                    <div className="mt-4 flex items-start gap-2 rounded-xl border border-red-100 bg-red-50/80 px-4 py-3 text-sm font-medium text-red-600">
                         <HiOutlineExclamationTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                         <span>
                             You need an API key before the console can call anything.{" "}
@@ -302,51 +341,26 @@ export default function DataConsole() {
                 )}
             </header>
 
-            <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+            {/*
+                TWO COLUMNS, half and half: the request on the left, the
+                response on the right. Configuring a parameter and reading what
+                it did are one task, and stacked they were two screens apart —
+                every change meant scrolling down to look and back up to edit.
 
-                {/* Catalog */}
-                <aside className="rounded-xl border border-slate-200 bg-card p-3">
-                    {ENDPOINT_GROUPS.map((group) => (
-                        <section key={group} className="mb-4 last:mb-0">
-                            <h2 className="px-2 pb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                                {group}
-                            </h2>
+                Each column scrolls on its own so a long JSON body cannot drag
+                the builder off the top. Below `lg` they stack, because two
+                240px columns are worse than one of either — and there every
+                height rule drops away, so the section scrolls as one page.
 
-                            <div className="space-y-0.5">
-                                {ENDPOINTS.filter((item) => item.group === group).map(
-                                    (item) => {
-                                        const active = item.id === endpoint.id;
+                lg:flex-1 lg:min-h-0 IS the height contract: the header is
+                shrink-0, so this is the remainder, whatever the header turned
+                out to be. lg:items-stretch is what makes both columns as tall
+                as the row — which is what their own min-h-0 + overflow needs
+                in order to have something to be shorter than.
+            */}
+            <div className="grid items-start gap-6 px-8 pb-8 pt-5 lg:min-h-0 lg:flex-1 lg:grid-cols-2 lg:items-stretch">
 
-                                        return (
-                                            <button
-                                                key={item.id}
-                                                type="button"
-                                                onClick={() => selectEndpoint(item)}
-                                                className={`w-full rounded-lg px-2.5 py-2 text-left transition cursor-pointer ${active
-                                                    ? "bg-accent/10"
-                                                    : "hover:bg-gray-200/40"
-                                                    }`}
-                                            >
-                                                <span
-                                                    className={`block text-sm font-semibold ${active ? "text-accent" : "text-slate-800"
-                                                        }`}
-                                                >
-                                                    {item.name}
-                                                </span>
-
-                                                <span className="mt-0.5 block truncate font-mono text-[11px] text-slate-400">
-                                                    {item.path}
-                                                </span>
-                                            </button>
-                                        );
-                                    }
-                                )}
-                            </div>
-                        </section>
-                    ))}
-                </aside>
-
-                <div className="min-w-0 space-y-6">
+                <div className="flex min-w-0 flex-col gap-6 lg:min-h-0 lg:overflow-y-auto lg:pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-control">
 
                     {/* Builder */}
                     <section className="rounded-xl border border-slate-200 bg-card p-5">
@@ -361,7 +375,10 @@ export default function DataConsole() {
                                 GET
                             </span>
 
-                            <span className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-xs text-slate-700">
+                            {/* The one place on this screen a native scrollbar
+                                still showed: a 15px OS bar under a 12px mono
+                                line, half the height of the strip it sat in. */}
+                            <span className={`min-w-0 flex-1 overflow-x-auto whitespace-nowrap py-0.5 font-mono text-xs text-slate-700 ${SCROLLBAR}`}>
                                 {url}
                             </span>
 
@@ -372,12 +389,19 @@ export default function DataConsole() {
                                 onClick={() => run()}
                                 disabled={!canRun}
                                 title="Ctrl/Cmd + Enter"
-                                className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-slate-400 cursor-pointer"
+                                /* SAME BOX AS THE COPY BUTTON BESIDE IT — same
+                                   radius, padding, gap and type scale. They are
+                                   two controls in one strip and Run was a size
+                                   larger, which made the strip lumpy rather
+                                   than making Run look important. It keeps
+                                   nav-glass and the semibold weight, so it is
+                                   still visibly the primary of the pair. */
+                                className="nav-glass inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 transition disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                             >
                                 {running ? (
-                                    <HiOutlineArrowPath className="h-4 w-4 animate-spin" />
+                                    <HiOutlineArrowPath className="h-3.5 w-3.5 animate-spin" />
                                 ) : (
-                                    <HiOutlinePlay className="h-4 w-4" />
+                                    <HiOutlinePlay className="h-3.5 w-3.5" />
                                 )}
                                 Run
                             </button>
@@ -410,26 +434,30 @@ export default function DataConsole() {
                                                     {PICKER_LABELS[kind]}
                                                 </span>
 
-                                                <select
+                                                {/* The id rides along as the hint:
+                                                    what you pick by is the name,
+                                                    but what lands in the URL above
+                                                    is the id, and seeing the two
+                                                    together is how you check the
+                                                    request is the one you meant. */}
+                                                <SelectMenu
                                                     value={ids[kind] ?? ""}
                                                     disabled={blocked}
-                                                    onChange={(event) => pickId(kind, event.target.value)}
-                                                    className="h-11 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm text-slate-800 transition focus:border-[#6A00FF] focus:outline-none disabled:opacity-40 cursor-pointer"
-                                                >
-                                                    <option value="">
-                                                        {blocked
+                                                    ariaLabel={PICKER_LABELS[kind]}
+                                                    placeholder={
+                                                        blocked
                                                             ? `Pick a ${parent} first`
                                                             : options.length
                                                                 ? "Select..."
-                                                                : "Nothing here yet"}
-                                                    </option>
-
-                                                    {options.map((option) => (
-                                                        <option key={option._id} value={option._id}>
-                                                            {option.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                                : "Nothing here yet"
+                                                    }
+                                                    options={options.map((option) => ({
+                                                        value: option._id,
+                                                        label: option.name,
+                                                        hint: option._id,
+                                                    }))}
+                                                    onChange={(next) => pickId(kind, next)}
+                                                />
                                             </label>
                                         );
                                     })}
@@ -451,20 +479,16 @@ export default function DataConsole() {
                                             </span>
 
                                             {param.type === "select" ? (
-                                                <select
+                                                <SelectMenu
                                                     value={params[param.name] ?? ""}
-                                                    onChange={(event) =>
-                                                        setParam(param.name, event.target.value)
-                                                    }
-                                                    className="h-11 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm text-slate-800 transition focus:border-[#6A00FF] focus:outline-none cursor-pointer"
-                                                >
-                                                    <option value="">default</option>
-                                                    {param.options?.map((option) => (
-                                                        <option key={option.value} value={option.value}>
-                                                            {option.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                    ariaLabel={param.label}
+                                                    placeholder="default"
+                                                    options={(param.options ?? []).map((option) => ({
+                                                        value: option.value,
+                                                        label: option.label,
+                                                    }))}
+                                                    onChange={(next) => setParam(param.name, next)}
+                                                />
                                             ) : (
                                                 <input
                                                     type={param.type === "number" ? "number" : "text"}
@@ -473,7 +497,7 @@ export default function DataConsole() {
                                                     onChange={(event) =>
                                                         setParam(param.name, event.target.value)
                                                     }
-                                                    className="h-11 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm text-slate-800 transition focus:border-[#6A00FF] focus:outline-none placeholder:text-slate-300"
+                                                    className="h-11 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm text-slate-800 transition focus:border-slate-400 focus:outline-none placeholder:text-slate-300"
                                                 />
                                             )}
 
@@ -488,10 +512,35 @@ export default function DataConsole() {
                             </div>
                         )}
                     </section>
+                </div>
 
-                    {/* Response */}
-                    <section className="rounded-xl border border-slate-200 bg-card">
-                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-3">
+                {/*
+                    Response — the RIGHT half.
+
+                    THE SCROLL IS ON THE CARD'S BODY, NOT THE COLUMN. Scrolling
+                    the column moved the whole card: it left the card sized to
+                    its content — floating short of the bottom of a screen it
+                    was given the full height of — and it carried the status
+                    line, the json/table/code tabs and the pager away with the
+                    payload, so reading to the end of a body meant scrolling
+                    back up to change how you were looking at it.
+
+                    The card CAPS at the row rather than filling it. Fixing the
+                    float by giving it flex-1 traded one wrong height for the
+                    other: the Code tab is two short snippets, and a card
+                    stretched to the full column under them is a metre of empty
+                    bordered box. Default flex (grow 0, shrink 1) says the only
+                    thing that is true of both — as tall as its content, never
+                    taller than the row. min-h-0 is what lets the shrink land on
+                    the body instead of overflowing the card.
+
+                    Chrome pinned top and bottom, body scrolls between them.
+                    overflow-auto, not -y: a wide row in the table view has to
+                    go somewhere too.
+                */}
+                <div className="flex min-w-0 flex-col lg:min-h-0">
+                    <section className="flex min-h-0 flex-col rounded-xl border border-slate-200 bg-card">
+                        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-3">
                             <div className="flex flex-wrap items-center gap-2 text-xs">
                                 {result ? (
                                     <>
@@ -537,7 +586,7 @@ export default function DataConsole() {
                             </div>
                         </div>
 
-                        <div className="p-5">
+                        <div className="min-h-0 flex-1 overflow-auto p-5 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-control hover:[&::-webkit-scrollbar-thumb]:bg-control-hover">
                             {error && (
                                 <p className="py-16 text-center text-sm font-medium text-red-400">
                                     {error}
@@ -546,7 +595,7 @@ export default function DataConsole() {
 
                             {!error && !result && tab !== "code" && (
                                 <div className="rounded-xl border border-dashed border-slate-300 bg-card/50 px-6 py-16 text-center">
-                                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-accent/10 text-accent">
+                                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-slate-300 bg-card text-slate-600">
                                         <HiOutlineCircleStack className="h-6 w-6" />
                                     </div>
 
@@ -563,7 +612,7 @@ export default function DataConsole() {
                                         type="button"
                                         onClick={() => run()}
                                         disabled={!canRun}
-                                        className="mt-6 inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-slate-400 cursor-pointer"
+                                        className="nav-glass mt-6 inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-900 transition disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                                     >
                                         <HiOutlinePlay className="h-4 w-4" />
                                         Run request
@@ -572,7 +621,7 @@ export default function DataConsole() {
                             )}
 
                             {!error && result && tab === "json" && (
-                                <JsonView value={result.body} className="max-h-[520px]" />
+                                <JsonView value={result.body} />
                             )}
 
                             {!error && result && tab === "table" && (
@@ -582,7 +631,7 @@ export default function DataConsole() {
                                         the full body.
                                     </p>
                                 ) : (
-                                    <div className="overflow-x-auto">
+                                    <div className={`overflow-x-auto ${SCROLLBAR}`}>
                                         <table className="w-full border-collapse">
                                             <thead>
                                                 <tr className="border-b border-gray-200/40 text-left text-sm font-bold text-muted">
@@ -670,23 +719,31 @@ export default function DataConsole() {
 
                         {/* Offset paging, straight from the server's own meta. */}
                         {!error && result && pagination && tab !== "code" && (
-                            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-8 py-5">
-                                <p className="text-sm text-gray-500">
+                            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-5 py-3">
+                                {/* CARD CHROME, not a page control. Three 40px
+                                    pills under a 28px tab strip made the footer
+                                    the heaviest thing in the panel, and it is
+                                    the least important: the payload is what you
+                                    came for. 28px squares on the card's own
+                                    rounded-lg, matched to the status line's
+                                    text-xs at the other end of the card. */}
+                                <p className="text-xs text-slate-400">
                                     Page {pagination.page} of {pagination.totalPages || 1} ·{" "}
                                     {pagination.total} total
                                 </p>
 
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5">
                                     <button
                                         type="button"
                                         onClick={() => goToPage(pagination.page - 1)}
                                         disabled={pagination.page <= 1 || running}
-                                        className="flex h-10 w-10 items-center justify-center rounded-2xl bg-control text-slate-800 transition hover:bg-gray-300 disabled:opacity-40 cursor-pointer"
+                                        aria-label="Previous page"
+                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-control text-slate-800 transition hover:bg-gray-300 disabled:opacity-40 cursor-pointer"
                                     >
-                                        <HiChevronLeft className="h-4 w-4" />
+                                        <HiChevronLeft className="h-3.5 w-3.5" />
                                     </button>
 
-                                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-black text-sm font-bold text-white">
+                                    <span className="flex h-7 min-w-7 items-center justify-center rounded-lg bg-black px-1.5 text-xs font-bold text-white">
                                         {pagination.page}
                                     </span>
 
@@ -694,9 +751,10 @@ export default function DataConsole() {
                                         type="button"
                                         onClick={() => goToPage(pagination.page + 1)}
                                         disabled={!pagination.hasMore || running}
-                                        className="flex h-10 w-10 items-center justify-center rounded-2xl bg-control text-slate-800 transition hover:bg-gray-300 disabled:opacity-40 cursor-pointer"
+                                        aria-label="Next page"
+                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-control text-slate-800 transition hover:bg-gray-300 disabled:opacity-40 cursor-pointer"
                                     >
-                                        <HiChevronRight className="h-4 w-4" />
+                                        <HiChevronRight className="h-3.5 w-3.5" />
                                     </button>
                                 </div>
                             </div>
@@ -704,8 +762,8 @@ export default function DataConsole() {
 
                         {/* The activity feed pages by cursor instead. */}
                         {!error && result && !pagination && nextCursor && tab !== "code" && (
-                            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-8 py-5">
-                                <p className="font-mono text-xs text-gray-500">
+                            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-5 py-3">
+                                <p className="min-w-0 truncate font-mono text-xs text-slate-400">
                                     nextCursor: {String(nextCursor)}
                                 </p>
 
@@ -713,10 +771,10 @@ export default function DataConsole() {
                                     type="button"
                                     onClick={() => followCursor(String(nextCursor))}
                                     disabled={running}
-                                    className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-zinc-600 transition hover:bg-slate-200/70 disabled:opacity-40 cursor-pointer"
+                                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-control px-2.5 py-1.5 text-xs font-medium text-slate-800 transition hover:bg-gray-300 disabled:opacity-40 cursor-pointer"
                                 >
                                     Next page
-                                    <HiChevronRight className="h-4 w-4" />
+                                    <HiChevronRight className="h-3.5 w-3.5" />
                                 </button>
                             </div>
                         )}

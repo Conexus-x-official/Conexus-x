@@ -23,6 +23,20 @@ interface ProfileDropdownProps {
     onLogout?: () => void;
     profileImage?: string;
     userName?: string;
+    /**
+     * Which way the menu opens. "top" is for a trigger that sits at the BOTTOM
+     * of its container — Conexus Meet parks this in the foot of its sidebar,
+     * where the default downward menu would render off the bottom of the
+     * viewport. Parameterised rather than forked: there must stay exactly one
+     * profile menu, or the log-out button starts differing between pages.
+     */
+    placement?: "top" | "bottom";
+    /**
+     * Draws the trigger as a full-width row with the name and email beside the
+     * avatar, instead of a bare 32px circle. A sidebar foot has room to say who
+     * you are signed in as, and a lone avatar there reads as decoration.
+     */
+    variant?: "avatar" | "bar";
 }
 
 export default function ProfileDropdown({
@@ -31,6 +45,8 @@ export default function ProfileDropdown({
     onLogout,
     profileImage,
     userName,
+    placement = "bottom",
+    variant = "avatar",
 }: ProfileDropdownProps) {
     const router = useRouter();
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -136,25 +152,63 @@ export default function ProfileDropdown({
     };
 
     return (
-        <div className="relative" ref={dropdownRef}>
-            <button
-                onClick={() => setMenuOpen(!isOpen)}
-                className="rounded-full overflow-hidden cursor-pointer w-8 h-8 mt-1 border-2 border-avatar-ring transition"
-            >
-                <img
-                    src={displayImage}
-                    alt={displayName}
-                    className="w-full h-full rounded-full object-cover"
-                />
-            </button>
+        <div className={`relative ${variant === "bar" ? "w-full" : ""}`} ref={dropdownRef}>
+            {variant === "bar" ? (
+                <button
+                    onClick={() => setMenuOpen(!isOpen)}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition hover:bg-control/60 cursor-pointer"
+                >
+                    <span className="relative shrink-0">
+                        <img
+                            src={displayImage}
+                            alt={displayName}
+                            className="h-9 w-9 rounded-full object-cover border-2 border-avatar-ring"
+                        />
+                        <span className="pointer-events-none absolute -bottom-0.5 -right-0.5">
+                            <PresenceDot status={myStatus} size={11} ringColor="var(--card)" />
+                        </span>
+                    </span>
 
-            {/* Outside the button so the ring is not clipped by its overflow. */}
-            <span className="pointer-events-none absolute bottom-0 right-0 mb-0.5">
-                <PresenceDot status={myStatus} size={11} ringColor="var(--panel)" />
-            </span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-slate-900">
+                            {displayName}
+                        </span>
+                        <span className="block truncate text-[11px] text-muted">
+                            {myStatusOption.label}
+                        </span>
+                    </span>
+
+                    <HiChevronRight
+                        className={`h-4 w-4 shrink-0 text-muted transition ${isOpen ? "-rotate-90" : "rotate-0"}`}
+                    />
+                </button>
+            ) : (
+                <>
+                    <button
+                        onClick={() => setMenuOpen(!isOpen)}
+                        className="rounded-full overflow-hidden cursor-pointer w-8 h-8 mt-1 border-2 border-avatar-ring transition"
+                    >
+                        <img
+                            src={displayImage}
+                            alt={displayName}
+                            className="w-full h-full rounded-full object-cover"
+                        />
+                    </button>
+
+                    {/* Outside the button so the ring is not clipped by its overflow. */}
+                    <span className="pointer-events-none absolute bottom-0 right-0 mb-0.5">
+                        <PresenceDot status={myStatus} size={11} ringColor="var(--panel)" />
+                    </span>
+                </>
+            )}
 
             {isOpen && (
-                <div className="absolute right-0 mt-3 w-96 bg-card rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
+                <div
+                    className={`absolute w-96 max-w-[90vw] bg-card rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50 ${placement === "top"
+                        ? "bottom-full mb-3 left-0"
+                        : "right-0 mt-3"
+                        }`}
+                >
 
                     <div className="py-2 border-b pl-5 flex items-center justify-between w-full">
                         <div className="flex items-center gap-3 w-full">

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { HiOutlineBolt, HiOutlineXMark } from "react-icons/hi2";
+import { HiOutlineXMark } from "react-icons/hi2";
+import { TbRoute } from "react-icons/tb";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 
 import {
@@ -19,6 +20,7 @@ import TriggerStep from "@/components/automation/TriggerStep";
 import ConditionsStep from "@/components/automation/ConditionsStep";
 import ActionsStep from "@/components/automation/ActionsStep";
 import type { Vocabulary } from "@/components/automation/shared";
+import NavTile from "@/components/ui/helpers/navTile";
 
 /**
  * The recipe builder: name → Trigger → Conditions → Actions, with a live
@@ -165,14 +167,23 @@ export default function AutomationBuilder({
         >
             <div
                 onClick={(e) => e.stopPropagation()}
-                className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-hairline bg-panel shadow-2xl font-dmsans"
+                /*
+                    WIDE AND TALL ON PURPOSE. At max-w-2xl the three lines were
+                    stacked in a column barely wider than one of them, so every
+                    sentence wrapped after two blanks and the whole rule never
+                    fit on screen at once. h-[86vh] also pins the height, so the
+                    box does not resize under the pointer as lines are added.
+                */
+                className="flex h-[86vh] max-h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-hairline bg-panel shadow-2xl font-dmsans"
             >
                 {/* Header */}
                 <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 bg-card px-6 py-4">
                     <div className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
-                            <HiOutlineBolt className="h-5 w-5" />
-                        </span>
+                        {/* TbRoute — the same glyph the sidebar's Automations
+                            row uses. A bolt was a third icon for one idea. */}
+                        <NavTile className="h-10 w-10 rounded-xl text-slate-600">
+                            <TbRoute className="h-5 w-5" />
+                        </NavTile>
                         <div>
                             <h2 className="text-lg font-bold leading-snug text-slate-900">
                                 {editing ? "Edit automation" : "New automation"}
@@ -199,49 +210,16 @@ export default function AutomationBuilder({
                 <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-6 py-5">
 
                     {/*
-                        The recipe reads top to bottom as one sentence:
-                        When … / Only if … / Then … . There is deliberately no
-                        separate "preview" of it any more — the form IS the
-                        sentence, and rendering the same words twice was the
-                        clearest sign the form was not readable on its own.
+                        Name FIRST, at the owner's request.
+
+                        It stays OPTIONAL and still defaults to the sentence:
+                        the placeholder is the live autoName, so it rewrites
+                        itself as the rule below is built and a blank field is
+                        never a blank name. Leading with the label also gives
+                        the row of steps a heading to sit under instead of the
+                        modal opening straight into three dropdowns.
                     */}
-                    <TriggerStep
-                        trigger={draft.trigger}
-                        vocab={vocab}
-                        onChange={(trigger) =>
-                            /**
-                             * Actions are reset with the trigger. Which actions
-                             * are even offered depends on the trigger's subject
-                             * — a parent action under a record trigger would be
-                             * kept on screen and then silently do nothing.
-                             */
-                            patch({ trigger, actions: [{ type: "set_completed" }] })
-                        }
-                    />
-
-                    <ConditionsStep
-                        conditions={draft.conditions}
-                        match={draft.match}
-                        triggerType={draft.trigger.type}
-                        vocab={vocab}
-                        onChange={(conditions) => patch({ conditions })}
-                        onMatchChange={(match) => patch({ match })}
-                    />
-
-                    <ActionsStep
-                        actions={draft.actions}
-                        triggerType={draft.trigger.type}
-                        vocab={vocab}
-                        onChange={(actions) => patch({ actions })}
-                    />
-
-                    {/*
-                        Naming comes LAST and is optional. Being asked to name a
-                        thing before you have described it is the wrong order,
-                        and the sentence already makes a better name than most
-                        people would type — so a blank one is filled in from it.
-                    */}
-                    <div className="pt-1">
+                    <div>
                         <label className="mb-1.5 block text-[11px] font-semibold text-muted">
                             Name <span className="font-normal">(optional)</span>
                         </label>
@@ -249,8 +227,48 @@ export default function AutomationBuilder({
                             value={draft.name}
                             onChange={(e) => patch({ name: e.target.value })}
                             placeholder={autoName}
-                            className="w-full rounded-lg border border-hairline bg-card px-2.5 py-2 text-xs font-medium text-slate-800 outline-none transition focus:border-accent placeholder:font-normal placeholder:text-muted"
+                            className="w-full rounded-lg border border-hairline bg-card px-3 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-slate-400 placeholder:text-xs placeholder:font-normal placeholder:text-muted"
                         />
+                    </div>
+
+                    {/*
+                        The recipe reads LEFT TO RIGHT as one sentence:
+                        When … / Only if … / Then … , three columns on a wide
+                        screen and a stack on a narrow one. There is no
+                        separate "preview" of it any more — the form IS the
+                        sentence, and rendering the same words twice was the
+                        clearest sign the form was not readable on its own.
+                    */}
+                    <div className="grid items-stretch gap-3 lg:grid-cols-3">
+                        <TriggerStep
+                            trigger={draft.trigger}
+                            vocab={vocab}
+                            onChange={(trigger) =>
+                                /**
+                                 * Actions are reset with the trigger. Which actions
+                                 * are even offered depends on the trigger's subject
+                                 * — a parent action under a record trigger would be
+                                 * kept on screen and then silently do nothing.
+                                 */
+                                patch({ trigger, actions: [{ type: "set_completed" }] })
+                            }
+                        />
+
+                        <ConditionsStep
+                            conditions={draft.conditions}
+                            match={draft.match}
+                            triggerType={draft.trigger.type}
+                            vocab={vocab}
+                            onChange={(conditions) => patch({ conditions })}
+                            onMatchChange={(match) => patch({ match })}
+                        />
+
+                        <ActionsStep
+                            actions={draft.actions}
+                            triggerType={draft.trigger.type}
+                            vocab={vocab}
+                            onChange={(actions) => patch({ actions })}
+                    />
                     </div>
 
                     {error && (
@@ -273,7 +291,7 @@ export default function AutomationBuilder({
                     <button
                         onClick={submit}
                         disabled={saving}
-                        className="flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60 cursor-pointer"
+                        className="nav-glass flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-900 transition disabled:opacity-60 cursor-pointer"
                     >
                         {saving && <AiOutlineLoading3Quarters className="h-4 w-4 animate-spin" />}
                         {editing ? "Save changes" : "Create automation"}

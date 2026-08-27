@@ -39,8 +39,10 @@ export const presenceLabel = (status?: string | null): string =>
 export const presenceColor = (status?: string | null): string =>
     presenceOption(status).color;
 
-/**
- * How often the client tells the server it is still here. The server expires a
- * pick after 150s (PRESENCE_TIMEOUT_MS), so one missed beat is survivable.
+/*
+ * There is no client heartbeat any more. Being CONNECTED is what marks a user
+ * live now, so the cadence constant that used to sit here described a timer
+ * that no longer exists — see store/usePresence.ts and the backend's
+ * attachRealtime(). PRESENCE_TIMEOUT_MS still lives server-side as the fallback
+ * for reads that never see a socket.
  */
-export const HEARTBEAT_INTERVAL_MS = 60 * 1000;

@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRealtimeRoom } from "@/store/useRealtimeRoom";
 import { TbHistory } from "react-icons/tb";
 import { HiOutlineArrowLeft, HiOutlineBolt, HiOutlineUser } from "react-icons/hi2";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
@@ -41,6 +42,8 @@ function ActivityPageBody() {
     const searchParams = useSearchParams();
 
     const workspaceId = params.id as string;
+
+    useRealtimeRoom({ workspaceId });
 
     // The drawer passes the path it was opened over, so "back" returns to the
     // exact board rather than guessing. Only same-origin paths are honoured.

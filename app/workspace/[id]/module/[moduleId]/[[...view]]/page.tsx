@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
+import { useRealtimeRoom } from "@/store/useRealtimeRoom";
 import { useAppDispatch } from "@/store/hooks";
 import {
     useGetCollectionsQuery,
@@ -68,6 +69,7 @@ import RecordAmendmentsPanel from "@/components/RecordAmendmentsPanel";
 import DeleteCollectionModal from "@/components/ui/modals/deleteCollectionModal";
 import EditCollectionModal from "@/components/ui/modals/editCollectionModal";
 import CollectionMenu from "@/components/ui/menu/collectionMenu";
+import { useShortcuts, wheelMatches } from "@/lib/shortcuts";
 
 import type { Collection, RecordItem } from "@/store/types";
 
@@ -1228,6 +1230,14 @@ export default function ModulePage() {
     const moduleId = params.moduleId as string;
     const workspaceId = params.id as string;
 
+    /**
+     * Everything on this board is announced to the board's own room, so another
+     * person's cell edit, moved row or posted amendment lands here without a
+     * poll. Joining is a request — the server re-checks module access before it
+     * puts this socket in the room.
+     */
+    useRealtimeRoom({ workspaceId, moduleId });
+
     const dispatch = useAppDispatch();
 
     // Collection state — served from the shared cache
@@ -1477,19 +1487,32 @@ export default function ModulePage() {
     // Scroll container ref
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-    // ── Shift + Scroll for horizontal scrolling ─────────────────────────
+    /**
+     * Hold a modifier and scroll to move the board sideways.
+     *
+     * WHICH modifier is the user's, not this file's — it is a row in
+     * lib/shortcuts.ts and editable from /user/preferences. Shift is still the
+     * default; someone whose trackpad already sends shift+wheel as horizontal
+     * scroll can move it to Alt and stop fighting the OS.
+     *
+     * wheelMatches is exact, not "contains": Shift alone must not also fire
+     * when the binding is Alt+Shift, or the two would be the same shortcut.
+     */
+    const horizontalScroll = useShortcuts().horizontalScroll;
+
     useEffect(() => {
         const el = scrollContainerRef.current;
         if (!el) return;
+
         const handleWheel = (e: WheelEvent) => {
-            if (e.shiftKey) {
-                e.preventDefault();
-                el.scrollLeft += e.deltaY || e.deltaX;
-            }
+            if (!wheelMatches(horizontalScroll, e)) return;
+            e.preventDefault();
+            el.scrollLeft += e.deltaY || e.deltaX;
         };
+
         el.addEventListener("wheel", handleWheel, { passive: false });
         return () => el.removeEventListener("wheel", handleWheel);
-    }, []);
+    }, [horizontalScroll]);
 
     // Collection menu & edit states
     const [collectionMenu, setCollectionMenu] = useState<{ collection: Collection; x: number; y: number } | null>(null);

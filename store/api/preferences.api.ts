@@ -3,6 +3,8 @@ import { baseApi } from "../baseApi";
 /** What the account remembers about how this person has set the app up. */
 export interface UserPreferences {
     sidebarCollapsed?: boolean;
+    /** Keyboard bindings by shortcut id — see lib/shortcuts.ts. */
+    shortcuts?: Record<string, string>;
 }
 
 export const preferencesApi = baseApi.injectEndpoints({

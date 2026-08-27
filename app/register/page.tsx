@@ -14,26 +14,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import GoogleButton from "@/components/ui/buttons/googleauth";
+import AuthShowcase from "@/components/auth/AuthShowcase";
 import OnboardingSetup from "@/components/onboarding/OnboardingSetup";
 import type { OnboardingAnswers } from "@/lib/onboarding";
 import { buildAccount, saveOnboardingProfile } from "@/lib/applyOnboarding";
 import { saveToken, saveUser } from "@/lib/auth";
 import env from "@/config/env";
-
-const slides = [
-    {
-        heading: "Collaborate in real time",
-        desc: "Work together with your team without missing a beat.",
-    },
-    {
-        heading: "Track every project",
-        desc: "Keep tasks, files, and deadlines organized in one place.",
-    },
-    {
-        heading: "Stay in sync",
-        desc: "See updates the moment they happen, wherever you are.",
-    },
-];
 
 const passwordRules = [
     {
@@ -75,7 +61,6 @@ export default function RegisterPage() {
     const [resending, setResending] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [slide, setSlide] = useState(0);
     const [showOtp, setShowOtp] = useState(false);
     const [verified, setVerified] = useState(false);
     /**
@@ -133,7 +118,7 @@ export default function RegisterPage() {
 
         try {
             const response = await fetch(
-                "http://localhost:4040/api/auth/register",
+                `${env.NEXT_PUBLIC_API_URL}/auth/register`,
                 {
                     method: "POST",
                     headers: {
@@ -252,7 +237,7 @@ export default function RegisterPage() {
 
         try {
             const response = await fetch(
-                "http://localhost:4040/api/auth/verify-otp",
+                `${env.NEXT_PUBLIC_API_URL}/auth/verify-otp`,
                 {
                     method: "POST",
                     headers: {
@@ -311,7 +296,7 @@ export default function RegisterPage() {
 
         try {
             const response = await fetch(
-                "http://localhost:4040/api/auth/resend-otp",
+                `${env.NEXT_PUBLIC_API_URL}/auth/resend-otp`,
                 {
                     method: "POST",
                     headers: {
@@ -399,47 +384,7 @@ export default function RegisterPage() {
         <section className="w-full h-full bg-canvas p-3">
             <div className="flex gap-3 w-full h-full">
 
-                <div className="hidden lg:flex lg:w-[45%] relative flex-col items-center justify-center border bg-accent rounded-2xl">
-
-                    <Link
-                        href="/"
-                        className="cursor-pointer"
-                    >
-                        <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-card shadow-sm">
-                            <Image
-                                src={logo}
-                                alt="Logo"
-                                priority
-                            />
-                        </div>
-                    </Link>
-
-                    <div className="mt-6 max-w-xs text-center">
-                        <h2 className="text-lg font-semibold font-google-sans">
-                            {slides[slide].heading}
-                        </h2>
-
-                        <p className="mt-2 text-sm font-google-sans">
-                            {slides[slide].desc}
-                        </p>
-                    </div>
-
-                    <div className="absolute bottom-10 flex gap-2">
-                        {slides.map((_, i) => (
-                            <span
-                                key={i}
-                                onClick={() =>
-                                    setSlide(i)
-                                }
-                                className={`h-1.5 w-1.5 rounded-full cursor-pointer ${
-                                    i === slide
-                                        ? "bg-card"
-                                        : "bg-black"
-                                }`}
-                            />
-                        ))}
-                    </div>
-                </div>
+                <AuthShowcase />
 
                 <div className="w-full lg:w-[55%] flex flex-col px-6 sm:px-16 py-8 rounded-xl bg-card flex-1">
 

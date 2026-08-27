@@ -33,11 +33,8 @@ interface ActivitySidebarProps {
 export default function ActivitySidebar({ workspaceId }: ActivitySidebarProps) {
     const pathname = usePathname();
     const [open, setOpen] = useState(false);
-    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        setMounted(true);
-
         const onOpen = () => setOpen(true);
         window.addEventListener(OPEN_ACTIVITY_EVENT, onOpen);
         return () => window.removeEventListener(OPEN_ACTIVITY_EVENT, onOpen);
@@ -52,7 +49,12 @@ export default function ActivitySidebar({ workspaceId }: ActivitySidebarProps) {
         return () => document.removeEventListener("keydown", onKey);
     }, [open]);
 
-    if (!mounted || !open) return null;
+    /**
+     * No mounted flag: `open` starts false, so the server and the first client
+     * render both produce nothing and agree — which is the whole job the flag
+     * was doing, minus the setState-in-effect the lint rule rejects.
+     */
+    if (!open || typeof document === "undefined") return null;
 
     return createPortal(
         <div className="fixed inset-0 z-50 flex justify-end">
@@ -72,7 +74,7 @@ export default function ActivitySidebar({ workspaceId }: ActivitySidebarProps) {
                 {/* Header — h-16 matches the page headers it sits beside */}
                 <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-slate-200 px-4">
                     <div className="flex min-w-0 items-center gap-2">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-card text-slate-600">
                             <TbHistory className="h-4 w-4" />
                         </span>
 
@@ -108,7 +110,7 @@ export default function ActivitySidebar({ workspaceId }: ActivitySidebarProps) {
                         // the exact board this was opened over.
                         href={`/workspace/${workspaceId}/activity?from=${encodeURIComponent(pathname)}`}
                         onClick={() => setOpen(false)}
-                        className="flex shrink-0 items-center justify-center gap-1.5 border-t border-slate-200 py-3 text-xs font-semibold text-accent transition hover:bg-accent/5 cursor-pointer"
+                        className="flex shrink-0 items-center justify-center gap-1.5 border-t border-slate-200 py-3 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 cursor-pointer"
                     >
                         View all activity
                         <HiOutlineArrowRight className="h-3.5 w-3.5" />

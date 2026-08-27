@@ -3,7 +3,7 @@ import {
   HiOutlineDocumentText, HiOutlineHashtag, HiOutlineFlag, HiOutlineCalendarDays,
   HiOutlineUser, HiOutlineEnvelope, HiOutlinePhone, HiOutlineCheckCircle,
   HiOutlineChevronUpDown, HiOutlineLink, HiOutlinePaperClip, HiOutlineStar,
-  HiOutlineBell, HiOutlineUsers, HiOutlineArrowsRightLeft,
+  HiOutlineBell, HiOutlineUsers, HiOutlineArrowsRightLeft, HiOutlineCog6Tooth,
 } from "react-icons/hi2";
 import { RiUserSharedLine } from "react-icons/ri";
 import { VscDeveloperTools } from "react-icons/vsc";
@@ -220,6 +220,12 @@ export const profileLinks = [
     name: "Notification",
     url: "/notification",
     icon: <HiOutlineBell />
+  },
+  {
+    id: 5,
+    name: "Preferences",
+    url: "/user/preferences",
+    icon: <HiOutlineCog6Tooth />
   },
 ]
 

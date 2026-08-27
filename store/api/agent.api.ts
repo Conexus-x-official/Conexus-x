@@ -1,4 +1,4 @@
-import { ACTIVITY_TAG, baseApi } from "../baseApi";
+import { ACTIVITY_TAG, AI_CREDITS_TAG, baseApi } from "../baseApi";
 
 /** Anything the panel can render as its own badge. */
 export interface EntityRef {
@@ -51,6 +51,26 @@ export interface PendingAction {
     input: Record<string, unknown>;
 }
 
+/**
+ * What the account has left, as the server decided it.
+ *
+ * Rendered verbatim — the client never re-derives an allowance or a remaining
+ * balance from a plan name. The plan rules live in one place on the server
+ * (services/aiCredits.service.ts) and a second copy here would be a second
+ * answer to "can I send this", which is the kind that goes wrong quietly.
+ */
+export interface CreditBalance {
+    plan: "free" | "paid" | "enterprise";
+    planLabel: string;
+    allowance: number;
+    used: number;
+    remaining: number;
+    /** ISO — the balance returns to `allowance` then. */
+    resetAt: string;
+    remainingUsd: number;
+    exhausted: boolean;
+}
+
 export interface AgentReply {
     text: string;
     actions: AppliedAction[];
@@ -64,6 +84,8 @@ export interface AgentReply {
         costUsd: number;
         steps: number;
     };
+    /** The balance AFTER this turn was charged. */
+    credits?: CreditBalance;
 }
 
 export interface AgentTurn {
@@ -81,11 +103,30 @@ export const agentApi = baseApi.injectEndpoints({
          * and five records in a single turn, and the panel has no way to know
          * which lists that touched; RTK refetches only what is subscribed.
          */
+        /**
+         * The balance, for the panel's first paint.
+         *
+         * A query and not folded into /auth/me because the period can roll
+         * while a tab sits open, and because every chat turn invalidates it —
+         * which is what keeps the number on screen the one the server would
+         * enforce, rather than whatever it was when the app loaded.
+         */
+        getAgentCredits: build.query<CreditBalance, void>({
+            query: () => "/agent/credits",
+            transformResponse: (response: { credits: CreditBalance }) =>
+                response.credits,
+            providesTags: [AI_CREDITS_TAG]
+        }),
+
         sendAgentMessage: build.mutation<
             AgentReply,
             { messages: AgentTurn[]; workspaceId?: string; moduleId?: string }
         >({
             query: (body) => ({ url: "/agent/chat", method: "POST", body }),
+            // The balance is invalidated on EVERY turn, including one that
+            // applied nothing: a question with no actions still costs money,
+            // and a balance that only moved when something was created would
+            // be wrong in exactly the case people notice.
             invalidatesTags: (result) =>
                 result && result.actions.length > 0
                     ? [
@@ -96,9 +137,10 @@ export const agentApi = baseApi.injectEndpoints({
                         "Record",
                         "RecordValue",
                         "Amendment",
-                        ACTIVITY_TAG
+                        ACTIVITY_TAG,
+                        AI_CREDITS_TAG
                     ]
-                    : []
+                    : [AI_CREDITS_TAG]
         }),
 
         /**
@@ -127,5 +169,8 @@ export const agentApi = baseApi.injectEndpoints({
     })
 });
 
-export const { useSendAgentMessageMutation, useConfirmAgentActionMutation } =
-    agentApi;
+export const {
+    useSendAgentMessageMutation,
+    useConfirmAgentActionMutation,
+    useGetAgentCreditsQuery
+} = agentApi;

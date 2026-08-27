@@ -1,85 +1,152 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+
 import CollectionLoader from "./CollectionLoader";
+import { readUser, readUserServer, subscribeUser } from "@/lib/auth";
 
 /**
- * Full-page skeleton for the dashboard shell: sidebar, header row and the
- * workspace card. Mirrors the real layout so nothing shifts once data lands.
+ * Full-page skeleton for the dashboard, redrawn 2026-08-27 because it was
+ * mirroring a layout that no longer exists.
+ *
+ * It still described the OLD Home page: a 328px sidebar, a recessed `bg-canvas`
+ * gutter, and a `rounded-l-2xl` panel card topped with a coral tab strip. Home
+ * is now edge-to-edge `bg-card` with a hairline header and pill tabs, and the
+ * sidebar is 288px — so the skeleton was promising a shape the real page then
+ * refused to take, which is worse than no skeleton at all: every element moved
+ * the moment data landed.
+ *
+ * A loading state is a PROMISE ABOUT LAYOUT. Its only job is that nothing jumps
+ * when it is replaced, so it is worth keeping honest whenever the page changes.
  */
+
+/** The sidebar's two widths, matching Sidebar.tsx. */
+const FULL_WIDTH = 288;
+const RAIL_WIDTH = 68;
+
+/** One pulsing block. `bg-control` is a token, so it stays one step off the
+ *  surface in every theme — LAYOUT.md §7 (the loading recipe). */
+function Bar({ className, delay = 0 }: { className: string; delay?: number }) {
+    return (
+        <div
+            className={`animate-pulse rounded-full bg-control ${className}`}
+            style={{ animationDelay: `${delay}ms` }}
+        />
+    );
+}
+
+function Tile({ className, delay = 0 }: { className: string; delay?: number }) {
+    return (
+        <div
+            className={`shrink-0 animate-pulse bg-control ${className}`}
+            style={{ animationDelay: `${delay}ms` }}
+        />
+    );
+}
+
 export default function WorkspaceLoader() {
+    /**
+     * The rail preference is read the same way Sidebar.tsx reads it, so a
+     * collapsed sidebar loads as a 68px rail instead of springing shut the
+     * instant the real one mounts. readUserServer() returns null, so the server
+     * and the hydrating render agree on "expanded".
+     */
+    const me = useSyncExternalStore(subscribeUser, readUser, readUserServer);
+    const collapsed = me?.preferences?.sidebarCollapsed === true;
+
+    const width = collapsed ? RAIL_WIDTH : FULL_WIDTH;
+
     return (
         <section
             role="status"
             aria-live="polite"
             aria-busy="true"
-            className="w-full flex h-full font-google-sans"
+            className="flex h-full w-full font-google-sans"
         >
             <span className="sr-only">Loading your workspaces…</span>
 
-            {/* Sidebar */}
-            <aside className="w-82 h-screen bg-card flex flex-col flex-shrink-0 px-5 pt-5">
-                <div className="flex items-center gap-4">
-                    <div className="h-15 w-15 rounded-xl bg-gray-200/80 animate-pulse" />
-                    <div className="flex-1 space-y-2">
-                        <div className="h-4 w-2/3 rounded-full bg-gray-200/80 animate-pulse" />
-                        <div className="h-3 w-1/3 rounded-full bg-gray-200/60 animate-pulse" />
+            {/* Sidebar — same widths, same paddings, same tile sizes */}
+            <aside
+                style={{ width }}
+                className="flex h-screen shrink-0 flex-col border-r border-hairline bg-card"
+            >
+                {/* Brand: the 44px tile sits 12px in and 16px down in BOTH
+                    states, exactly as the real one does. */}
+                <div className="px-3 pb-3 pt-4">
+                    <div className={`flex items-center gap-2.5 ${collapsed ? "justify-center" : ""}`}>
+                        <Tile className="h-11 w-11 rounded-xl" />
+
+                        {!collapsed && (
+                            <div className="min-w-0 flex-1 space-y-1.5">
+                                <Bar className="h-3 w-24" />
+                                <Bar className="h-2 w-32" delay={60} />
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                <div className="mt-8 h-10 rounded-xl bg-gray-200/70 animate-pulse" />
+                {/* Workspace switcher */}
+                <div className="px-3 pb-3">
+                    <Tile
+                        className={collapsed ? "mx-auto h-9 w-9 rounded-lg" : "h-[52px] w-full rounded-xl"}
+                        delay={90}
+                    />
+                </div>
 
-                <div className="mt-6 space-y-3">
-                    {Array.from({ length: 7 }).map((_, i) => (
-                        <div
-                            key={`nav-${i}`}
-                            className="h-9 rounded-lg bg-gray-200/60 animate-pulse"
-                            style={{
-                                width: `${70 + ((i * 11) % 30)}%`,
-                                animationDelay: `${i * 80}ms`
-                            }}
-                        />
+                {/* Nav rows */}
+                <div className={`space-y-1.5 px-3 ${collapsed ? "flex flex-col items-center" : ""}`}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        collapsed ? (
+                            <Tile key={i} className="h-9 w-9 rounded-lg" delay={i * 80} />
+                        ) : (
+                            <div key={i} className="flex items-center gap-2.5 py-0.5">
+                                <Tile className="h-7 w-7 rounded-lg" delay={i * 80} />
+                                {/* Ragged widths: a column of identical bars
+                                    reads as a loading GRAPHIC, a ragged one
+                                    reads as a list of names. */}
+                                <div
+                                    className="h-3 animate-pulse rounded-full bg-control"
+                                    style={{
+                                        width: `${44 + ((i * 17) % 38)}%`,
+                                        animationDelay: `${i * 80}ms`
+                                    }}
+                                />
+                            </div>
+                        )
                     ))}
                 </div>
             </aside>
 
-            {/* Main column */}
-            <div className="h-screen bg-canvas w-full">
-                <div className="w-full flex flex-col gap-3 mx-auto pl-3 py-1 h-full">
-                    {/* Header */}
-                    <div className="flex justify-between items-center pr-2">
-                        <div className="h-11 w-full max-w-xl rounded-xl border border-gray-200 bg-card" />
+            {/* Main column — bg-card and edge to edge, like the real page */}
+            <div className="flex h-screen w-full min-w-0 flex-col bg-card">
 
-                        <div className="flex items-center gap-2">
-                            <div className="h-10 w-10 rounded-full bg-card/70 animate-pulse" />
-                            <div className="h-10 w-10 rounded-full bg-card/70 animate-pulse" />
-                        </div>
+                {/* Header: the search box is drawn as an OUTLINE rather than a
+                    pulsing block. It is an input, and a filled bar where a field
+                    will be reads as content still loading when nothing about it
+                    is. */}
+                <header className="flex shrink-0 items-center justify-between gap-4 border-b border-hairline px-6 py-3">
+                    <div className="h-11 w-full max-w-xl rounded-xl border border-hairline" />
+
+                    <div className="flex shrink-0 items-center gap-2">
+                        <Tile className="h-8 w-8 rounded-full" />
+                        <Tile className="h-8 w-8 rounded-full" delay={80} />
                     </div>
+                </header>
 
-                    {/* Workspace card */}
-                    <div className="bg-panel rounded-l-2xl overflow-hidden h-full flex flex-col shadow-sm">
-                        <div className="bg-accent pt-2.5 px-6 flex items-end min-h-[52px] gap-2">
-                            <div className="h-9 w-36 rounded-t-[18px] bg-panel" />
-                            <div className="h-4 w-28 mb-3 rounded-full bg-card/40 animate-pulse" />
-                            <div className="h-4 w-24 mb-3 rounded-full bg-card/40 animate-pulse" />
-                        </div>
+                {/* Tab pills */}
+                <div className="flex shrink-0 items-center gap-1 px-6 py-2">
+                    {[0, 1, 2].map((i) => (
+                        <Tile
+                            key={i}
+                            className="h-8 w-28 rounded-lg"
+                            delay={i * 90}
+                        />
+                    ))}
+                </div>
 
-                        <div className="flex-1 overflow-hidden px-4 pt-2 pb-2">
-                            <CollectionLoader rows={10} columns={6} />
-                        </div>
-
-                        <div className="px-8 py-5 flex items-center justify-between">
-                            <div className="h-4 w-40 rounded-full bg-gray-300/50 animate-pulse" />
-                            <div className="flex items-center gap-2">
-                                {Array.from({ length: 4 }).map((_, i) => (
-                                    <div
-                                        key={`page-${i}`}
-                                        className="w-10 h-10 rounded-2xl bg-control animate-pulse"
-                                        style={{ animationDelay: `${i * 90}ms` }}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+                {/* The table itself */}
+                <div className="min-h-0 flex-1 overflow-hidden">
+                    <CollectionLoader rows={10} columns={5} />
                 </div>
             </div>
         </section>

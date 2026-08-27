@@ -72,16 +72,27 @@ export default function ConditionsStep({
     const remove = (index: number) =>
         onChange(conditions.filter((_, i) => i !== index));
 
+    /**
+     * Collapsed, but still a CARD — the three lines sit side by side now, so a
+     * bare button here would leave a hole between When and Then instead of the
+     * middle step of a rule. Dashed, so it still reads as "nothing here yet".
+     */
     if (conditions.length === 0) {
         return (
-            <div className="px-1">
+            <div className="flex h-full flex-col items-start justify-center rounded-xl border border-dashed border-slate-300 bg-card/50 p-4">
+                <span className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">
+                    Only if
+                </span>
                 <AddLineButton label="Only if…" onClick={add} />
+                <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                    Optional — without one, the trigger alone is the whole rule.
+                </p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-2 rounded-xl border border-slate-200 bg-card p-4">
+        <div className="flex h-full flex-col space-y-2 rounded-xl border border-slate-200 bg-card p-4">
             {conditions.map((condition, index) => (
                 <ConditionLine
                     key={index}
@@ -242,7 +253,7 @@ function ConditionLine({
                                 value: ""
                             })
                         }
-                        className="text-[10px] font-medium text-muted underline decoration-dotted underline-offset-2 transition hover:text-accent cursor-pointer"
+                        className="text-[10px] font-medium text-muted underline decoration-dotted underline-offset-2 transition hover:text-slate-900 cursor-pointer"
                     >
                         {isRecordSource ? "use a column" : "use a record field"}
                     </button>

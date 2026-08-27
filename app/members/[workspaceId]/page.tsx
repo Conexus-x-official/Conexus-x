@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useRealtimeRoom } from "@/store/useRealtimeRoom";
 import {
     ArrowLeft,
     Search,
@@ -73,6 +74,8 @@ const formatDate = (value?: string) =>
 export default function WorkspaceMembersPage() {
     const params = useParams();
     const workspaceId = String(params.workspaceId ?? "");
+
+    useRealtimeRoom({ workspaceId });
 
     const currentUserId = getUser()?.id ?? "";
 
