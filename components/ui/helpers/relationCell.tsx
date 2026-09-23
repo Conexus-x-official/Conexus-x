@@ -258,7 +258,7 @@ export default function RelationCell({
     return (
         <div
             ref={anchorRef}
-            className="flex h-10 shrink-0 items-center justify-center border-r border-slate-300 px-2 font-dmsans"
+            className="flex h-8 shrink-0 items-center justify-center border-r border-slate-300 px-2 font-dmsans"
             style={{ width, ...(displayField ? mirrorCellStyle : {}) }}
         >
             <button

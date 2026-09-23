@@ -82,6 +82,8 @@ export const recordsApi = baseApi.injectEndpoints({
                 collectionId: string;
                 name?: string;
                 position?: number;
+                /** "Starred", email style — toggled from any view. */
+                isImportant?: boolean;
                 /** Target collection id when the record is moved between groups. */
                 collectionName?: string;
                 /**

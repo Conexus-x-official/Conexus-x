@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { HiOutlineKey, HiOutlineCircleStack } from "react-icons/hi2";
+import { HiOutlineKey, HiOutlineCircleStack, HiOutlineWindow } from "react-icons/hi2";
 import {
     TbLayoutSidebarLeftCollapse,
     TbLayoutSidebarLeftExpand,
@@ -34,9 +34,11 @@ import { useUpdatePreferencesMutation } from "@/store/api/preferences.api";
  *
  * THE BRAND BLOCK IS THE WAY OUT, exactly as in userSidebar.tsx — the logo was
  * already the biggest target here and already went somewhere, so a separate
- * chevron was a second exit competing with the obvious one. History first, so
- * you land on the page and scroll you left; `/Home` only when there is nothing
- * to go back to, where router.back() would do nothing or leave the app.
+ * chevron was a second exit competing with the obvious one. Unlike userSidebar,
+ * it always goes to `/Home` rather than router.back(): the developer section
+ * (PIT key, data console) is reached from all over the app, so "back" landed
+ * on whatever page happened to be open before, not a place the user would
+ * call "back to where I was" — /Home is the one exit that is always right.
  *
  * DELIBERATELY NOT ADDED: a Preferences row. Those live in the ACCOUNT section
  * (/user/preferences) and are about the person; this section is about keys and
@@ -52,7 +54,7 @@ const RAIL_WIDTH = 68;
 
 const menu = [
     {
-        title: "API Key",
+        title: "PIT Key",
         description: "Your global access key",
         icon: HiOutlineKey,
         href: "/developer/api-key",
@@ -62,6 +64,12 @@ const menu = [
         description: "Query your CRM data",
         icon: HiOutlineCircleStack,
         href: "/developer/data-console",
+    },
+    {
+        title: "Preview",
+        description: "Run an extension here",
+        icon: HiOutlineWindow,
+        href: "/developer/preview",
     },
 ];
 
@@ -91,13 +99,8 @@ export default function DeveloperSidebar() {
         }
     };
 
-    /** History first, /Home as the fallback — see the note at the top. */
+    /** Always /Home — the developer section has no single "previous page" a user expects back to mean. */
     const leaveSection = () => {
-        if (typeof window !== "undefined" && window.history.length > 1) {
-            router.back();
-            return;
-        }
-
         router.push("/Home");
     };
 
@@ -224,8 +227,8 @@ export default function DeveloperSidebar() {
                                         </NavTile>
 
                                         {/* The description survives because these
-                                            two rows are genuinely unfamiliar — an
-                                            API key and a query console are not
+                                            two rows are genuinely unfamiliar — a
+                                            PIT key and a query console are not
                                             self-explanatory the way "Profile" is.
                                             It is muted and one line, so the names
                                             still read as one column. */}

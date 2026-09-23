@@ -11,10 +11,11 @@ import { readUser, readUserServer, subscribeUser } from "@/lib/auth";
  *
  * It still described the OLD Home page: a 328px sidebar, a recessed `bg-canvas`
  * gutter, and a `rounded-l-2xl` panel card topped with a coral tab strip. Home
- * is now edge-to-edge `bg-card` with a hairline header and pill tabs, and the
- * sidebar is 288px — so the skeleton was promising a shape the real page then
- * refused to take, which is worse than no skeleton at all: every element moved
- * the moment data landed.
+ * is now a `bg-panel` column with a `bg-card` header, a greeting strip, and the
+ * table in a hairline-bordered `bg-card` card with pill tabs — so the skeleton
+ * mirrors THAT: header, greeting bars + a button block, then the bordered card.
+ * A skeleton that promises a shape the real page refuses to take is worse than
+ * none, because every element moves the moment data lands.
  *
  * A loading state is a PROMISE ABOUT LAYOUT. Its only job is that nothing jumps
  * when it is replaced, so it is worth keeping honest whenever the page changes.
@@ -117,15 +118,16 @@ export default function WorkspaceLoader() {
                 </div>
             </aside>
 
-            {/* Main column — bg-card and edge to edge, like the real page */}
-            <div className="flex h-screen w-full min-w-0 flex-col bg-card">
+            {/* Main column — bg-panel, with the header and the table card
+                raised off it, like the real page */}
+            <div className="flex h-screen w-full min-w-0 flex-col bg-panel">
 
                 {/* Header: the search box is drawn as an OUTLINE rather than a
                     pulsing block. It is an input, and a filled bar where a field
                     will be reads as content still loading when nothing about it
                     is. */}
-                <header className="flex shrink-0 items-center justify-between gap-4 border-b border-hairline px-6 py-3">
-                    <div className="h-11 w-full max-w-xl rounded-xl border border-hairline" />
+                <header className="flex shrink-0 items-center justify-between gap-4 border-b border-hairline bg-card px-4 py-2">
+                    <div className="h-9 w-full max-w-xl rounded-lg border border-hairline" />
 
                     <div className="flex shrink-0 items-center gap-2">
                         <Tile className="h-8 w-8 rounded-full" />
@@ -133,20 +135,33 @@ export default function WorkspaceLoader() {
                     </div>
                 </header>
 
-                {/* Tab pills */}
-                <div className="flex shrink-0 items-center gap-1 px-6 py-2">
-                    {[0, 1, 2].map((i) => (
-                        <Tile
-                            key={i}
-                            className="h-8 w-28 rounded-lg"
-                            delay={i * 90}
-                        />
-                    ))}
+                {/* Greeting strip: title + subtitle bars on the left, the
+                    New-workspace button as a solid block on the right. */}
+                <div className="flex shrink-0 items-center justify-between gap-4 px-4 pb-3 pt-4">
+                    <div className="space-y-2">
+                        <Bar className="h-4 w-52" />
+                        <Bar className="h-3 w-36" delay={60} />
+                    </div>
+                    <Tile className="h-8 w-32 rounded-lg" delay={90} />
                 </div>
 
-                {/* The table itself */}
-                <div className="min-h-0 flex-1 overflow-hidden">
-                    <CollectionLoader rows={10} columns={5} />
+                {/* The table card */}
+                <div className="min-h-0 flex-1 px-4 pb-4">
+                    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-hairline bg-card">
+                        {/* Tab strip — icon chip + label, underline style */}
+                        <div className="flex shrink-0 items-center gap-4 border-b border-hairline px-4 py-2">
+                            {[0, 1, 2].map((i) => (
+                                <div key={i} className="flex items-center gap-1.5">
+                                    <Tile className="h-[18px] w-[18px] rounded-md" delay={i * 90} />
+                                    <Bar className="h-3 w-20" delay={i * 90 + 40} />
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="min-h-0 flex-1 overflow-hidden">
+                            <CollectionLoader rows={10} columns={5} />
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

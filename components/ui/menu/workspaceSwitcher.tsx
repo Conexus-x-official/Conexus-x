@@ -158,8 +158,8 @@ export default function WorkspaceSwitcher({
                 aria-label={collapsed ? `Workspace: ${label}` : undefined}
                 className={
                     collapsed
-                        ? "nav-glass flex h-9 w-9 items-center justify-center rounded-lg text-foreground transition cursor-pointer"
-                        : `flex w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition cursor-pointer ${open
+                        ? "nav-glass flex h-8 w-8 items-center justify-center rounded-lg transition cursor-pointer"
+                        : `flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left transition cursor-pointer ${open
                             ? "nav-glass border-transparent"
                             : "border-hairline hover:bg-control/50"
                         }`
@@ -169,34 +169,30 @@ export default function WorkspaceSwitcher({
                     LAYOUT.md §7 "Icon tile". It used to be a filled bg-control
                     square, which made the workspace the one icon in the sidebar
                     drawn a different way from every icon above and below it. */}
-                {collapsed ? (
-                    /* In the rail the BUTTON is already the 36px square (and it
-                       is always "active", so it wears nav-glass like an active
-                       RailButton) — a second bordered square inside it would
-                       draw the same outline twice. */
-                    <WorkspaceIcon iconKey={active?.icon} className="h-[18px] w-[18px]" />
-                ) : (
-                    <NavTile className="h-8 w-8 rounded-lg text-body">
-                        <WorkspaceIcon iconKey={active?.icon} className="h-4 w-4" />
-                    </NavTile>
-                )}
+                {/* Same h-6 w-6 bordered tile in BOTH states — collapsed, the
+                   button is a nav-glass h-8 hit area around it (it is always the
+                   active workspace), so the icon is the exact size and shape it
+                   is when the sidebar is open. */}
+                <NavTile className="h-6 w-6 rounded-md text-body">
+                    <WorkspaceIcon iconKey={active?.icon} className="h-3.5 w-3.5" />
+                </NavTile>
 
                 {!collapsed && (
                     <>
                         {/* leading-none on both lines: the default line-height
                             would push this stack past the trigger's height. */}
                         <span className="min-w-0 flex-1">
-                            <span className="block text-[9px] font-semibold uppercase leading-none tracking-wide text-muted">
+                            <span className="block text-[8px] font-semibold uppercase leading-none tracking-wide text-muted">
                                 Workspace
                             </span>
-                            <span className="mt-1 block truncate text-[13px] font-semibold leading-none text-slate-900">
+                            <span className="mt-0.5 block truncate text-[11px] font-semibold leading-none text-slate-900">
                                 {label}
                             </span>
                         </span>
 
                         {/* Up-down, not a caret: this SWITCHES between peers
                             rather than revealing something underneath. */}
-                        <HiChevronUpDown className="h-4 w-4 shrink-0 text-muted" />
+                        <HiChevronUpDown className="h-3.5 w-3.5 shrink-0 text-muted" />
                     </>
                 )}
             </button>

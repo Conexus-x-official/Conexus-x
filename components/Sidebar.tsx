@@ -70,17 +70,17 @@ import type { Workspace } from "@/store/types";
  * not re-wrap on every frame while the box moves — see AiSidebar, which
  * animates the same way for the same reason.
  */
-const FULL_WIDTH = 288;
+const FULL_WIDTH = 248;
 const RAIL_WIDTH = 68;
 
 /**
  * One row of the collapsed rail: a square target that still navigates. The name
  * survives as a native tooltip, which is the only label a 68px rail has room for.
  *
- * The button IS the tile here — it is already a 36px square, so wrapping a
- * second bordered square inside it would draw the same outline twice. Active
- * swaps the fill for `nav-glass` and keeps a transparent border, so the row
- * does not resize by 2px when you land on it.
+ * The visible mark is the SAME h-6 w-6 bordered tile the expanded rows use, so
+ * collapsing the sidebar never resizes an icon — only the transparent h-8 hit
+ * area around it appears. Active is the `nav-glass` fill on that hit area,
+ * exactly how an expanded row highlights.
  */
 function RailButton({
     label,
@@ -99,12 +99,19 @@ function RailButton({
             onClick={onClick}
             title={label}
             aria-label={label}
-            className={`flex h-9 w-9 items-center justify-center rounded-lg border transition cursor-pointer ${active
-                ? "nav-glass border-transparent text-foreground"
-                : "border-slate-300 bg-card text-slate-600 hover:bg-control/60 hover:text-slate-900"
+            className={`group flex h-8 w-8 items-center justify-center rounded-lg transition cursor-pointer ${active ? "nav-glass" : "hover:bg-control/50"
                 }`}
         >
-            {children}
+            {/* The SAME h-6 w-6 bordered tile the expanded rows use — active
+                state is the glass on the button behind it, exactly as an
+                expanded row highlights, so the icon is identical in both
+                states and only the hit area around it differs. */}
+            <span
+                className={`flex h-6 w-6 items-center justify-center rounded-md border border-slate-300 bg-card transition ${active ? "text-foreground" : "text-slate-600 group-hover:text-slate-900"
+                    }`}
+            >
+                {children}
+            </span>
         </button>
     );
 }
@@ -140,14 +147,14 @@ function SectionHeader({
                 type="button"
                 onClick={onToggle}
                 aria-expanded={open}
-                className="flex flex-1 items-center gap-2.5 rounded-lg py-1.5 text-left cursor-pointer"
+                className="flex flex-1 items-center gap-2 rounded-lg py-1 text-left cursor-pointer"
             >
-                <NavTile className="h-7 w-7 rounded-lg text-slate-600">{icon}</NavTile>
+                <NavTile className="h-6 w-6 rounded-md text-slate-600">{icon}</NavTile>
 
-                <span className="text-sm font-medium text-slate-600">{label}</span>
+                <span className="text-[11px] font-semibold text-slate-600">{label}</span>
 
                 {typeof count === "number" && count > 0 && (
-                    <span className="text-[11px] font-semibold text-muted/70 tabular-nums">
+                    <span className="text-[10px] font-semibold text-muted/70 tabular-nums">
                         {count}
                     </span>
                 )}
@@ -346,35 +353,32 @@ export default function Sidebar() {
 
             {/* ── Brand + collapse toggle ─────────────────────────────
 
-                 The logo TILE keeps the same box in both states: 12px in from the
-                 shell edge, 22px down, 44px square — only what sits BESIDE it
-                 changes. It used to carry px-2 py-1.5 when expanded and p-1 when
-                 collapsed, so mid cross-fade the tile stepped 8px left and 2px up:
-                 the one element that should be the anchor was the one thing
-                 visibly jumping. 12px is also what centres it in the 68px rail,
-                 on the same centre line the RailButtons below sit on. */}
-            <div className="px-3 pt-4 pb-3">
-                <div className={`flex items-center gap-1 ${collapsed ? "flex-col" : ""}`}>
+                 The logo TILE is the same h-6 w-6 bordered tile as every nav row
+                 and the workspace switcher, in BOTH states — collapsing only
+                 drops the wordmark beside it, the icon itself never resizes or
+                 moves. Sits on the same centre line the RailButtons below use. */}
+            <div className="px-3 pt-3 pb-2">
+                <div className={`flex items-center gap-1 ${collapsed ? "flex-col" : "px-2"}`}>
                     <button
                         type="button"
                         onClick={() => router.push("/Home")}
                         title="Home"
-                        className={`group flex h-11 items-center rounded-xl text-left transition  cursor-pointer ${collapsed ? "w-11 justify-center" : "flex-1 gap-2.5 pr-2"
+                        className={`group flex h-8 items-center rounded-lg text-left transition  cursor-pointer ${collapsed ? "w-8 justify-center" : "flex-1 gap-2 pr-2"
                             }`}
                     >
-                        <NavTile className="h-11 w-11 rounded-xl">
-                            <Image src={logo} alt="Logo" priority className="h-8 w-8 object-contain" />
+                        <NavTile className="h-6 w-6 rounded-md">
+                            <Image src={logo} alt="Logo" priority className="h-4 w-4 object-contain" />
                         </NavTile>
 
                         {!collapsed && (
                             <span className="min-w-0">
-                                <span className="flex items-center gap-0.5 text-[15px] font-bold text-slate-900 leading-none tracking-tight">
+                                <span className="flex items-center gap-0.5 text-[13px] font-bold text-slate-900 leading-none tracking-tight">
                                     Conexus
-                                    <span className="brand-gradient-warm-text text-lg font-extrabold">
+                                    <span className="brand-gradient-warm-text text-[15px] font-extrabold">
                                         X
                                     </span>
                                 </span>
-                                <span className="mt-0.5 block truncate text-[11px] font-medium text-muted">
+                                <span className="mt-0.5 block truncate text-[10px] font-medium text-muted">
                                     Modern CRM for agile teams
                                 </span>
                             </span>
@@ -387,12 +391,12 @@ export default function Sidebar() {
                         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                         aria-expanded={!collapsed}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-control hover:text-slate-900 cursor-pointer"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-control hover:text-slate-900 cursor-pointer"
                     >
                         {collapsed ? (
-                            <TbLayoutSidebarLeftExpand className="h-[18px] w-[18px]" />
+                            <TbLayoutSidebarLeftExpand className="h-4 w-4" />
                         ) : (
-                            <TbLayoutSidebarLeftCollapse className="h-[18px] w-[18px]" />
+                            <TbLayoutSidebarLeftCollapse className="h-4 w-4" />
                         )}
                     </button>
                 </div>
@@ -402,7 +406,7 @@ export default function Sidebar() {
                  Outside the scrolling <nav> ON PURPOSE: which workspace you are
                  in is the frame for everything below it, so it must not scroll
                  away with the modules it scopes. */}
-            <div className={`pb-3 ${collapsed ? "flex justify-center px-3" : "px-3"}`}>
+            <div className={`pb-2 ${collapsed ? "flex justify-center px-3" : "px-3"}`}>
                 <WorkspaceSwitcher
                     workspaces={workspaces}
                     activeId={workspaceId}
@@ -420,13 +424,13 @@ export default function Sidebar() {
                     /* ── Rail ──────────────────────────────────────────
                        Everything stays reachable: the same targets, reduced to
                        their icon or initial, each still navigating on click. */
-                    <div className="flex flex-col items-center gap-1">
+                    <div className="flex flex-col items-center gap-0.5">
                         <RailButton
                             label="Extensions"
                             active={isExtensionsActive}
                             onClick={() => router.push("/Extensions")}
                         >
-                            <TbPlug className="h-[18px] w-[18px]" />
+                            <TbPlug className="h-3.5 w-3.5" />
                         </RailButton>
 
                         <RailButton
@@ -434,7 +438,7 @@ export default function Sidebar() {
                             active={isMeetActive}
                             onClick={() => router.push("/Meet")}
                         >
-                            <TbMessages className="h-[18px] w-[18px]" />
+                            <TbMessages className="h-3.5 w-3.5" />
                         </RailButton>
 
                         {automationHref && (
@@ -443,11 +447,11 @@ export default function Sidebar() {
                                 active={isAutomationActive}
                                 onClick={() => router.push(automationHref)}
                             >
-                                <TbRoute className="h-[18px] w-[18px]" />
+                                <TbRoute className="h-3.5 w-3.5" />
                             </RailButton>
                         )}
 
-                        {modules.length > 0 && <span className="my-1 h-px w-6 bg-hairline" />}
+                        {modules.length > 0 && <span className="my-1 h-px w-5 bg-hairline" />}
 
                         {modules.map((moduleItem) => {
                             const active = pathname.includes(`/module/${moduleItem._id}`);
@@ -463,7 +467,7 @@ export default function Sidebar() {
                                         )
                                     }
                                 >
-                                    <TbCards className="h-[18px] w-[18px]" />
+                                    <TbCards className="h-3.5 w-3.5" />
                                 </RailButton>
                             );
                         })}
@@ -476,13 +480,13 @@ export default function Sidebar() {
                     "Apps" reads as a launcher of things that already exist. */}
                 <Link
                     href="/Extensions"
-                    className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition cursor-pointer ${isExtensionsActive
-                        ? "nav-glass font-semibold text-foreground"
-                        : "font-medium text-slate-600 hover:bg-control/60 hover:text-slate-900"
+                    className={`flex items-center gap-2 rounded-lg px-2 py-1 text-[11px] transition cursor-pointer ${isExtensionsActive
+                        ? "nav-glass font-bold text-foreground"
+                        : "font-semibold text-slate-600 hover:bg-control/60 hover:text-slate-900"
                         }`}
                 >
-                    <NavTile>
-                        <TbPlug className="h-4 w-4" />
+                    <NavTile className="h-6 w-6 rounded-md">
+                        <TbPlug className="h-3.5 w-3.5" />
                     </NavTile>
                     Extensions
                 </Link>
@@ -493,13 +497,13 @@ export default function Sidebar() {
                     module happens to be open. */}
                 <Link
                     href="/Meet"
-                    className={`mt-px flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition cursor-pointer ${isMeetActive
-                        ? "nav-glass font-semibold text-foreground"
-                        : "font-medium text-slate-600 hover:bg-control/60 hover:text-slate-900"
+                    className={`mt-px flex items-center gap-2 rounded-lg px-2 py-1 text-[11px] transition cursor-pointer ${isMeetActive
+                        ? "nav-glass font-bold text-foreground"
+                        : "font-semibold text-slate-600 hover:bg-control/60 hover:text-slate-900"
                         }`}
                 >
-                    <NavTile>
-                        <TbMessages className="h-4 w-4" />
+                    <NavTile className="h-6 w-6 rounded-md">
+                        <TbMessages className="h-3.5 w-3.5" />
                     </NavTile>
                     Conexus Meet
                 </Link>
@@ -507,13 +511,13 @@ export default function Sidebar() {
                 {automationHref && (
                     <Link
                         href={automationHref}
-                        className={`mt-px flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition cursor-pointer ${isAutomationActive
-                            ? "nav-glass font-semibold text-foreground"
-                            : "font-medium text-slate-600 hover:bg-control/60 hover:text-slate-900"
+                        className={`mt-px flex items-center gap-2 rounded-lg px-2 py-1 text-[11px] transition cursor-pointer ${isAutomationActive
+                            ? "nav-glass font-bold text-foreground"
+                            : "font-semibold text-slate-600 hover:bg-control/60 hover:text-slate-900"
                             }`}
                     >
-                        <NavTile>
-                            <TbRoute className="h-4 w-4" />
+                        <NavTile className="h-6 w-6 rounded-md">
+                            <TbRoute className="h-3.5 w-3.5" />
                         </NavTile>
                         Automations
                     </Link>
@@ -528,21 +532,22 @@ export default function Sidebar() {
                 {/* Modules — of the workspace named in the switcher above. */}
                 <div>
                     <SectionHeader
-                        icon={<TbCards className="h-4 w-4" />}
+                        icon={<TbCards className="h-3.5 w-3.5" />}
                         label="Modules"
                         count={modules.length}
                         open={openModule}
                         onToggle={() => setOpenModule(!openModule)}
                     />
 
-                    {/* Indented under the section caption — the offset carries the
-                        hierarchy, so each row no longer repeats the section icon. */}
+                    {/* Indented so each row's text lines up under the section
+                        LABEL (icon tile 24 + gap 8), not under its icon — the
+                        offset carries the hierarchy without repeating the glyph. */}
                     {openModule && (
-                        <div className="mt-0.5 space-y-px pl-6">
+                        <div className="mt-0.5 space-y-px pl-8">
                             {loadingModules ? (
                                 <RowSkeleton rows={4} />
                             ) : modules.length === 0 ? (
-                                <p className="px-2 py-2 text-xs font-medium text-muted">
+                                <p className="px-2 py-1.5 text-[11px] font-medium text-muted">
                                     No modules in this workspace yet
                                 </p>
                             ) : (
@@ -558,9 +563,9 @@ export default function Sidebar() {
                                                 )
                                             }
                                             title={moduleItem.name}
-                                            className={`group flex w-full items-center rounded-lg px-2 py-1.5 text-sm transition cursor-pointer ${active
-                                                ? "nav-glass font-semibold text-foreground"
-                                                : "font-medium text-slate-600 hover:bg-control/60 hover:text-slate-900"
+                                            className={`group flex w-full items-center rounded-lg px-2 py-1 text-[11px] transition cursor-pointer ${active
+                                                ? "nav-glass font-bold text-foreground"
+                                                : "font-semibold text-slate-600 hover:bg-control/60 hover:text-slate-900"
                                                 }`}
                                         >
                                             <span className="truncate">{moduleItem.name}</span>

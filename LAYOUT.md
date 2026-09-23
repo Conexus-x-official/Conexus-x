@@ -170,6 +170,8 @@ Fixed dimensions worth knowing: sidebar `w-82`, tab strip `min-h-[52px]`, pagina
 
 ## 7. Component recipes
 
+> Modals, drawers, dropdowns and their buttons/inputs are **§13** now. The `bg-accent` button and `bg-accent/10` icon-tile below are stale (§11.8) — use `bg-foreground` / `bg-control` on new work.
+
 **Shell card** — the frame every page content sits in:
 ```
 bg-[#f4f4f6] rounded-l-2xl overflow-hidden h-full flex flex-col shadow-sm
@@ -284,9 +286,10 @@ Rules:
 | Popover / dropdown | `z-20` |
 | Sticky page header | `z-20` |
 | Portal modal + backdrop | `z-50` |
+| Anchored panel over another portalled menu (§14) | `z-[100]` |
 | Drag ghost (inline style) | `999999` |
 
-Backdrop: `fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4`, rendered through `createPortal(..., document.body)`.
+Backdrop: `fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4`, rendered through `createPortal(..., document.body)` (§13.1 — was `bg-black/60`).
 
 ## 10. Theming
 
@@ -339,6 +342,8 @@ Audited across `app/` and `components/`; fix these before adding new surfaces.
 5. ~~**Theme variables unused**~~ — fixed; see §10. Still hardcoded and outside the token layer: the teal wordmark gradient ([Sidebar.tsx:116](components/Sidebar.tsx#L116)), the unread dot ([notifications.tsx:135](components/notifications.tsx#L135)), and the violet/teal nav chips — decide whether those follow `--primary` or stay brand-constant.
 6. **`.shimmer` vs `animate-pulse`** — two skeleton systems; `.shimmer` is a hardcoded white gradient and only works on dark backgrounds. `animate-pulse` on `bg-control` is the themed replacement (§7). The module page has been converted; `.shimmer` still lingers elsewhere in `globals.css` and its remaining call sites.
 7. **`shadow-xl` vs `shadow-2xl`** used interchangeably for modals.
+8. **`bg-accent` on buttons** — §7's Primary/Empty-state recipes and older modals still show `bg-accent … text-white`. As of 2026-09 the accent is purple and **out** of the action layer (§13.2): new/redesigned surfaces use `bg-foreground text-card`. The old recipes below are stale; follow §13.
+9. **`--accent` labelled "Coral" in §4.2** — it is `var(--brand-purple)` now. §4.2's brand table predates the token layer.
 
 ## 12. Token layer (implemented)
 
@@ -385,3 +390,92 @@ So `bg-[#f4f4f6]` is `bg-panel`, `bg-[#FF7F77]` is `bg-accent`, `text-[#7c7c80]`
 | `--primary` | `bg-primary`, `text-primary` |
 | `--avatar-ring` | `border-avatar-ring` |
 | `--drag-shadow` | not a utility — use `var(--drag-shadow)` in an inline style |
+
+`--accent` is now `var(--brand-purple)` (§4.2 still says "Coral" — stale). **It is no longer used for buttons, focus rings, or any in-app action** — see §13. It survives only where a colour genuinely carries meaning (a live/working dot, a data-viz series is `var(--brand-blue)` instead, status pills carry their own hue). New chrome is neutral: `bg-foreground` / `text-card` / `border-hairline` / `focus:*-foreground`.
+
+---
+
+## 13. Modals & floating panels (2026-09)
+
+Every modal, drawer, dropdown and popover the app has gained this year uses **one neutral treatment**. The `--accent` (purple) is not part of it — it read as a brand shout on every "Cancel" button and every focused input. Reference: [components/ui/modals/createWorkspace.tsx](components/ui/modals/createWorkspace.tsx).
+
+### 13.1 Chrome
+
+| Piece | Class |
+|---|---|
+| Backdrop | `fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4` (`backdrop-blur-sm` optional), `createPortal(…, document.body)` |
+| Panel | `w-full max-w-md rounded-2xl border border-hairline bg-card p-6 shadow-2xl font-google-sans` |
+| Drawer (right) | `relative flex h-full w-[440px] max-w-[94vw] flex-col border-l border-hairline bg-card shadow-2xl` |
+| Header | `mb-4 flex items-center justify-between` — `h2` is `text-lg font-bold text-foreground`; close button `rounded-md p-1 text-muted hover:bg-control hover:text-foreground` |
+| Section divider inside a panel | `border-t border-hairline` (footers, reply rails) |
+| Recessed sub-surface | `rounded-lg border border-hairline bg-panel p-3` (a form block inside a panel) |
+
+### 13.2 Buttons — NEUTRAL, never `bg-accent`
+
+| Role | Class |
+|---|---|
+| Primary | `rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-card transition hover:opacity-90 disabled:opacity-50 cursor-pointer` |
+| Secondary | `rounded-lg border border-hairline px-4 py-2 text-sm font-semibold text-body transition hover:bg-control cursor-pointer` |
+| Tertiary / Cancel | `text-xs font-semibold text-muted transition hover:text-foreground cursor-pointer` |
+| Destructive confirm | `text-red-600 hover:text-red-700` (text only — the §4.4 red pair for a filled one) |
+
+`bg-foreground` / `text-card` is the inverted-chip pair (like the tooltip, §nowhere-yet): near-black on white in the light family, near-white on dark in `.dark`. It replaces every `bg-accent … text-white` on a modal/panel button.
+
+### 13.3 Inputs in a modal
+
+```
+rounded-lg border border-hairline bg-control/40 px-3 py-2.5 text-sm text-body outline-none transition
+placeholder:text-muted focus:border-foreground focus:bg-card focus:ring-4 focus:ring-foreground/10 disabled:opacity-60
+```
+
+Kills the old `focus:border-[#6C5CE7]` / `focus:ring-accent/20`. The search bar and the Aquiline composer use the `focus-within:` form of the same.
+
+### 13.4 Global focus outline
+
+`globals.css` sets, for `a / button / input / select / textarea / summary / [tabindex] / [role="button"|"tab"|"menuitem"|"option"]`:
+
+```css
+:focus, :focus-visible { outline: none; }
+```
+
+No focus rectangle anywhere — click *or* Tab (owner's call). Controls that carry their own `focus:ring-*` / `focus-within:ring-*` keep it; only the browser default is suppressed. Trade-off accepted deliberately — do not "restore accessibility" by re-adding a global `:focus-visible` ring.
+
+---
+
+## 14. Anchored-panel positioning — the "physics"
+
+Any panel that opens **from a trigger and must not be clipped** — a colour picker inside a scrolling menu, a dropdown near the viewport edge, a hover card inside an `overflow` container — is `position: fixed`, portalled to `document.body`, and positioned from the trigger's own rect with flip + clamp. Reference: [components/ui/ColorPicker.tsx](components/ui/ColorPicker.tsx) `placePanel()`.
+
+This is proven across: `ColorPicker` (custom picker), `ModulePicker`, `ItemPicker`, `BoardAccessMenu`, `ViewTabs` (+ View menu), `notifications.tsx` (bell dropdown), `homesection.tsx` `DateCell`, `userProfileCard.tsx` `UserMention`, the Kanban card details popover.
+
+### 14.1 The recipe
+
+```
+const PANEL_W = 232, PANEL_H = 214;   // estimates the flip math needs
+const GAP = 8;                        // trigger → panel
+const EDGE = 12;                      // viewport margin
+
+placePanel():
+  r  = triggerRef.current.getBoundingClientRect()
+  vw = innerWidth, vh = innerHeight
+
+  left = r.left
+  if (left + PANEL_W > vw - EDGE)  left = r.right - PANEL_W      // right-align to trigger
+  left = clamp(left, EDGE, max(EDGE, vw - PANEL_W - EDGE))       // then clamp
+
+  top = r.bottom + GAP
+  if (top + PANEL_H > vh - EDGE) {                               // no room below
+    above = r.top - GAP - PANEL_H
+    top = above >= EDGE ? above : clamp(top, EDGE, vh - PANEL_H - EDGE)   // flip, else clamp
+  }
+
+  setPos({ top, left })
+```
+
+### 14.2 Rules
+
+- **Compute on open, then keep it live.** Call `placePanel()` in the open handler, and while open re-run it on `resize` and on `scroll` **in the capture phase** (`window.addEventListener("scroll", reflow, true)`) — the trigger often sits inside a scrolling menu, and a `fixed` panel detaches from it the moment anything moves.
+- **Dismiss:** `mousedown` outside (checks both `triggerRef` and `panelRef` — portals bubble the React tree, not the DOM, so a listener on `document` is the reliable catch) **and** `Escape`.
+- **Hydration:** the `typeof document === "undefined"` portal guard is safe **only** because the render is also gated on `open`/`pos`, which start `false`/`null` — server and first client render both produce nothing, so they agree (§ see also the `useHydrated` hook for localStorage-driven render state).
+- **z-index:** `z-50` (portal layer, §9). A picker that opens over another portalled menu (ColorPicker inside the status dropdown) goes `z-[100]`.
+- **Never** a bare `position: absolute` popover that can extend across sibling cells/rows or sit near a `sticky` element — that is a stacking-*context* bug a bigger z-index cannot fix. Proven three times (notification dropdown over the sticky `<thead>`, `DateCell` inside a `relative z-1` `<td>`, `UserMention` inside the amendments drawer). Anchor + portal instead.

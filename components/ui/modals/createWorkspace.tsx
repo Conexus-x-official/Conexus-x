@@ -34,35 +34,35 @@ export default function CreateWorkspace({
 
     return createPortal(
         <div
-            className="fixed inset-0 bg-transparent flex items-center justify-center px-5 z-50"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5"
             onClick={handleClose}
         >
             <div
-                className="bg-card w-full max-w-md rounded p-6"
+                className="w-full max-w-md rounded-2xl border border-hairline bg-card p-6 shadow-2xl font-google-sans"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-[#172B4D]">
+                <div className="mb-4 flex items-center justify-between">
+                    <h2 className="text-lg font-bold text-foreground">
                         Create Workspace
                     </h2>
 
                     <button
                         onClick={handleClose}
-                        className="p-1 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer"
+                        className="rounded-md p-1 text-muted transition hover:bg-control hover:text-foreground cursor-pointer"
                         aria-label="Close"
                     >
-                        <HiOutlineXMark className="w-5 h-5" />
+                        <HiOutlineXMark className="h-5 w-5" />
                     </button>
                 </div>
 
                 {error && (
-                    <div className="flex items-start gap-2 bg-red-50 text-red-600 text-sm p-3 rounded mb-4">
-                        <HiOutlineExclamationTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <div className="mb-4 flex items-start gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                        <HiOutlineExclamationTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                         <span>{error}</span>
                     </div>
                 )}
 
-                <label className="text-xs font-medium text-slate-500 mb-1.5 block">
+                <label className="mb-1.5 block text-xs font-semibold text-muted">
                     Workspace name
                 </label>
 
@@ -72,13 +72,13 @@ export default function CreateWorkspace({
                     placeholder="e.g. Sales Pipeline"
                     autoFocus
                     disabled={creating}
-                    className="w-full border border-slate-200 rounded px-3 py-2.5 text-sm text-slate-800 mb-4 outline-none focus:border-[#6A00FF] focus:ring-2 focus:ring-[#6A00FF]/15 transition disabled:bg-slate-50"
+                    className="mb-4 w-full rounded-lg border border-hairline bg-control/40 px-3 py-2.5 text-sm text-body outline-none transition placeholder:text-muted focus:border-foreground focus:bg-card focus:ring-4 focus:ring-foreground/10 disabled:opacity-60"
                 />
 
                 <button
                     onClick={createWorkspace}
                     disabled={creating || !workspaceName.trim()}
-                    className="w-full bg-[#6A00FF] text-white py-2.5 rounded text-sm font-medium hover:bg-[#5800D6] disabled:opacity-60 transition cursor-pointer"
+                    className="w-full rounded-lg bg-foreground py-2.5 text-sm font-semibold text-card transition hover:opacity-90 disabled:opacity-50 cursor-pointer"
                 >
                     {creating ? "Creating..." : "Create Workspace"}
                 </button>

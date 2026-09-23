@@ -148,6 +148,8 @@ export interface RecordItem {
     module?: string;
     workspace?: string;
     isCompleted?: boolean;
+    /** "Starred", email style — anyone with board access can toggle it. */
+    isImportant?: boolean;
     isArchived?: boolean;
     createdAt?: string;
     updatedAt?: string;

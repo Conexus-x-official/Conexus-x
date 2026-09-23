@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CornerDownRight, Link2, Loader2, Plus, Trash2 } from "lucide-react";
-import { HiOutlineChatBubbleLeftEllipsis } from "react-icons/hi2";
+import { MdOutlineTipsAndUpdates } from "react-icons/md";
 import ResizeHandle from "@/components/ui/helpers/resizeHandle";
 import { MIRROR_TINT, mirrorHeaderStyle } from "@/lib/mirror";
 import { useGetSubRecordsQuery } from "@/store/api/records.api";
@@ -100,7 +100,7 @@ function SubRecordNameCell({
 
     return (
         <div
-            className="group/sub-name sticky left-10 z-20 flex shrink-0 items-center gap-1.5 border-r border-slate-300 bg-control px-3 py-2 font-google-sans text-[13px] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.15)]"
+            className="group/sub-name sticky left-10 z-20 flex shrink-0 items-center gap-1.5 border-r border-slate-300 bg-control px-2 py-1 font-google-sans text-[13px] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.15)]"
             style={{ width, borderLeft: `3px solid ${color}` }}
         >
             {/* Indent only. The nesting arrow used to be repeated on every row;
@@ -108,30 +108,6 @@ function SubRecordNameCell({
                 block instead of restating the same thing N times. The padding
                 stays INSIDE the cell so the coloured rail keeps its place. */}
             <span className="ml-4 shrink-0" aria-hidden />
-
-            {/* Amendments — the same control the board row carries, in the same
-                place, because a sub-record is a record and the conversation on
-                one is read the same way. */}
-            <button
-                type="button"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenAmendments(subRecord);
-                }}
-                title={
-                    subRecord.amendmentCount
-                        ? `${subRecord.amendmentCount} amendment${subRecord.amendmentCount === 1 ? "" : "s"}`
-                        : "Write an amendment"
-                }
-                className={`flex shrink-0 cursor-pointer items-center gap-0.5 rounded px-1 py-0.5 transition hover:bg-slate-200/70 ${subRecord.amendmentCount ? "text-accent" : "text-slate-400"}`}
-            >
-                <HiOutlineChatBubbleLeftEllipsis className="h-3.5 w-3.5" />
-                {(subRecord.amendmentCount ?? 0) > 0 && (
-                    <span className="font-google-sans text-[10px] font-bold tabular-nums">
-                        {subRecord.amendmentCount}
-                    </span>
-                )}
-            </button>
 
             {editing ? (
                 <input
@@ -143,16 +119,40 @@ function SubRecordNameCell({
                         if (e.key === "Enter") commit();
                         if (e.key === "Escape") setDraft(null);
                     }}
-                    className="w-full border-none bg-transparent text-[13px] text-slate-800 outline-none ring-0"
+                    className="min-w-0 flex-1 border-none bg-transparent text-[13px] text-slate-800 outline-none ring-0"
                 />
             ) : (
                 <span
                     onClick={() => setDraft(subRecord.name)}
-                    className="w-full cursor-text truncate text-slate-700"
+                    className="min-w-0 flex-1 cursor-text truncate text-slate-700"
                 >
                     {subRecord.name}
                 </span>
             )}
+
+            {/* Amendments — the same control the board row carries, in the same
+                place (trailing edge), because a sub-record is a record and the
+                conversation on one is read the same way. */}
+            <button
+                type="button"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenAmendments(subRecord);
+                }}
+                title={
+                    subRecord.amendmentCount
+                        ? `${subRecord.amendmentCount} amendment${subRecord.amendmentCount === 1 ? "" : "s"}`
+                        : "Write an amendment"
+                }
+                className={`ml-1 flex shrink-0 cursor-pointer items-center gap-0.5 rounded px-1 py-0.5 transition hover:bg-slate-200/70 ${subRecord.amendmentCount ? "text-accent" : "text-slate-400 opacity-0 group-hover/sub-name:opacity-100 focus-visible:opacity-100"}`}
+            >
+                <MdOutlineTipsAndUpdates className="h-3.5 w-3.5" />
+                {(subRecord.amendmentCount ?? 0) > 0 && (
+                    <span className="font-google-sans text-[10px] font-bold tabular-nums">
+                        {subRecord.amendmentCount}
+                    </span>
+                )}
+            </button>
 
             <button
                 onClick={() => onDelete(subRecord)}

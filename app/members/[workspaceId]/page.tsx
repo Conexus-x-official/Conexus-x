@@ -212,15 +212,15 @@ export default function WorkspaceMembersPage() {
             }).unwrap();
 
             toast.success(
-                `${memberName(member) || "That person"} is now ${roleLabel(inviteRole).toLowerCase()}`,
-                workspace?.name
+                `Invited ${memberName(member) || "that person"} as ${roleLabel(inviteRole).toLowerCase()}`,
+                "They'll join once they accept from their notifications"
             );
 
             setInviteIdentifier("");
             setInviteRole("member");
             setShowInvite(false);
         } catch (error) {
-            toast.error(messageFrom(error, "Could not add that member."));
+            toast.error(messageFrom(error, "Could not send that invitation."));
         }
     };
 

@@ -362,6 +362,22 @@
   background-image: var(--gradient-brand-warm);
 }
 
+/* The timeline column's progress fill (components/views/CollectionView.tsx).
+   The brand sweep run LEFT-TO-RIGHT, not at 135deg like --gradient-brand — a
+   1px-tall bar slices a diagonal gradient down to a single colour, so the
+   angle has to be horizontal for the sweep to read at all. The gradient is
+   anchored to the fill element, so a short bar shows the cyan end and a full
+   one shows the whole sweep, which doubles as a progress cue. */
+.timeline-bar-fill {
+  background-image: linear-gradient(
+    to right,
+    var(--brand-cyan) 0%,
+    var(--brand-blue) 35%,
+    var(--brand-purple) 70%,
+    var(--brand-magenta) 100%
+  );
+}
+
 /* The public site's primary button. A real class rather than a Tailwind
    arbitrary value: the hover state has to swap the whole background-image, and
    the utility form of that is unreadable at every call site that needs it.
@@ -548,4 +564,48 @@
 
 .dark .subrecord-grid {
   --color-slate-300: rgb(255 255 255 / 0.20);
+}
+
+/* ── Chart focus ring ─────────────────────────────────────────────────────
+   Recharts makes its SVG shapes (bars, cells, the chart surface itself)
+   focusable for keyboard accessibility, so a mouse click still leaves them
+   focused — Chrome/Edge then draw their default black focus rectangle over
+   the bar, which reads as a rendering glitch rather than a chart. Scoped to
+   `.recharts-wrapper` only, so real focus rings elsewhere in the app (an
+   actual keyboard-navigated button, an input) are untouched. */
+.recharts-wrapper *:focus,
+.recharts-wrapper *:focus-visible {
+  outline: none !important;
+}
+
+/* ── Focus outline ───────────────────────────────────────────────────────
+   No focus rectangle anywhere — not on a mouse click, not on Tab.
+
+   The bug this fixes: click a control, then press Tab, and the NEXT element
+   lit up with the browser's default focus rectangle — a hard platform
+   outline that ignores border-radius and any negative margin, so on the
+   view-tab strip (and any plain icon button) it read as a stray box drawn
+   over the layout. The owner asked for it gone outright.
+
+   NOTE: this removes the only keyboard-focus indicator for controls that
+   don't set their own `focus-visible:` ring — an accessibility trade-off
+   made deliberately at the owner's request. Components that already carry a
+   `focus:ring-*` / `focus-within:ring-*` utility keep it. */
+a:focus,
+a:focus-visible,
+button:focus,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus,
+summary:focus-visible,
+[tabindex]:focus,
+[tabindex]:focus-visible,
+[role="button"]:focus,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="menuitem"]:focus-visible,
+[role="option"]:focus-visible {
+  outline: none;
 }

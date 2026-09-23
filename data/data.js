@@ -141,28 +141,6 @@ export const PALETTE = [
   { bg: "#FDF0E8", accent: "#E8590C" },
 ];
 
-export const notifications = [
-  {
-    id: 1,
-    title: "New module created",
-    message: "Marketing Campaign was created successfully.",
-    time: "2 min ago",
-  },
-  {
-    id: 2,
-    title: "Workspace invited",
-    message: "John invited you to Product Team.",
-    time: "10 min ago",
-  },
-  {
-    id: 3,
-    title: "Link clicked",
-    message: "Your short link received 25 new clicks.",
-    time: "1 hour ago",
-  },
-];
-
-
 export const themeColors = [
   {
     name: "Electric Purple",

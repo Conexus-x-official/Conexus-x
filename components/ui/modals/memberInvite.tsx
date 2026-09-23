@@ -183,7 +183,7 @@ function InviteDialog({
                         </h2>
 
                         <p className="text-xs text-slate-400 mt-1 font-dmsans">
-                            Add a member to your workspace
+                            They&apos;ll join once they accept the invite
                         </p>
                     </div>
 
@@ -346,7 +346,7 @@ function InviteDialog({
                         disabled={adding || !ready}
                         className="flex-1 bg-[#FB923C] text-white py-2.5 rounded-xl text-sm font-medium hover:bg-[#FB923C]/80 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer font-dmsans"
                     >
-                        {adding ? "Adding..." : "Add Member"}
+                        {adding ? "Sending…" : "Send Invite"}
                     </button>
 
                     <button
