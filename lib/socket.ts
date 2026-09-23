@@ -31,7 +31,7 @@ export const getSocket = (): Socket | null => socket;
  * a deployed API must not need a second variable that can be forgotten.
  */
 const socketOrigin = (): string => {
-    const raw = env.NEXT_PUBLIC_API_URL ?? "http://localhost:4040/api";
+    const raw = env.NEXT_PUBLIC_API_URL ?? "";
 
     try {
         return new URL(raw).origin;
