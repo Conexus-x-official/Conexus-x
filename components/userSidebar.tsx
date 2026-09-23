@@ -37,16 +37,10 @@ import { useUpdatePreferencesMutation } from "@/store/api/preferences.api";
  * THE BRAND BLOCK IS THE WAY OUT. There is no separate Back button any more:
  * the logo and the name were already the biggest target in the panel and
  * already went somewhere, so a chevron under them was a second exit competing
- * with the obvious one. Clicking either now does what Back did — real history
- * first, so you land on the exact page and scroll you left, and /Home only when
- * there is nothing to go back to (a pasted link, a new tab, a refresh), where
- * router.back() would otherwise do nothing or walk you out of the app.
- *
- * This is backButton.tsx's logic rather than its component, because the trigger
- * here is a 44px tile with a wordmark beside it, not a chevron in a header. The
- * signal is the same `window.history.length`, for the same reason: the App
- * Router exposes no "can I go back", and document.referrer is never updated by
- * client-side navigation.
+ * with the obvious one. It always goes to `/Home` rather than router.back():
+ * the account section is reached from all over the app, so "back" landed on
+ * whatever page happened to be open before, not a place the user would call
+ * "back to where I was" — /Home is the one exit that is always right.
  *
  * COLLAPSE SHARES ONE PREFERENCE with the main sidebar (`sidebarCollapsed`).
  * "I want the nav out of my way" is one habit, not two — a person who runs the
@@ -75,13 +69,8 @@ export default function UserSidebar() {
 
     const [updatePreferences] = useUpdatePreferencesMutation();
 
-    /** History first, /Home as the fallback — see the note at the top. */
+    /** Always /Home — see the note at the top. */
     const leaveAccount = () => {
-        if (typeof window !== "undefined" && window.history.length > 1) {
-            router.back();
-            return;
-        }
-
         router.push("/Home");
     };
 

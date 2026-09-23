@@ -76,7 +76,8 @@ const initialParams = (endpoint: EndpointDef): Record<string, string> =>
     endpoint.query.some((param) => param.name === "limit") ? { limit: "25" } : {};
 
 export default function DataConsole() {
-    const { data: apiKey = null, isLoading: keyLoading } = useGetApiKeyQuery();
+    const { data: keyInfo, isLoading: keyLoading } = useGetApiKeyQuery();
+    const apiKey = keyInfo?.apiKey ?? null;
 
     const [endpointId, setEndpointId] = useState(ENDPOINTS[0].id);
     const [ids, setIds] = useState<Ids>({});

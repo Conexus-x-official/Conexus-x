@@ -148,7 +148,7 @@ export default function RatingCell({
     return (
         <div
             ref={anchorRef}
-            className="shrink-0 h-10 border-r border-slate-300 flex items-center justify-center px-2 font-dmsans"
+            className="shrink-0 h-8 border-r border-slate-300 flex items-center justify-center px-2 font-dmsans"
             style={{ width }}
         >
             {/* Collapsed state — click anywhere on the stars to open the large picker. */}

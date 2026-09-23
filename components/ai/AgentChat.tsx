@@ -89,16 +89,30 @@ const SUGGESTIONS = [
 /**
  * What the panel says while it waits.
  *
- * The request is a single non-streaming call, so these are TIMED, not measured
- * — the panel cannot see which round the loop is on. They are worded to stay
- * true of whatever is happening: Aquiline reads, then acts, then writes its line.
+ * The request is a single non-streaming call — the panel cannot see which round
+ * of the agent loop is running — so rather than fake a staged progress bar it
+ * just cycles a word. Every one of them is true of "a model is working on it";
+ * the rotation is the honest signal that the wait is still alive.
  */
-const STAGES = [
-    { after: 0, label: "Reading your request" },
-    { after: 1200, label: "Checking your workspace" },
-    { after: 3000, label: "Making the change" },
-    { after: 6500, label: "Almost there" },
+const THINKING_WORDS = [
+    "Mulling",
+    "Pondering",
+    "Deliberating",
+    "Simmering",
+    "Crunching",
+    "Musing",
+    "Unfurling",
+    "Considering",
+    "Percolating",
+    "Ruminating",
+    "Noodling",
+    "Cooking",
+    "Wrangling",
+    "Untangling",
 ];
+
+/** ~1.9s a word — long enough to read, short enough to feel like progress. */
+const THINKING_INTERVAL_MS = 1900;
 
 const ACTION_ICON: Record<AppliedAction["kind"], typeof LayoutGrid> = {
     workspace: FolderPlus,
@@ -210,10 +224,10 @@ function withChips(text: string, mentions: Mention[], onAccent = false) {
  */
 function PlanTree({ plan }: { plan: BlueprintPlan }) {
     return (
-        <div className="mb-2 space-y-2 rounded-lg border border-slate-200 bg-panel p-2.5">
+        <div className="mb-2 space-y-2 rounded-lg border border-hairline bg-panel p-2.5">
             {plan.workspace ? (
                 <div className="flex items-center gap-1.5">
-                    <FolderPlus className="h-3 w-3 shrink-0 text-accent" />
+                    <FolderPlus className="h-3 w-3 shrink-0 text-muted" />
                     <EntityChip mention={{ kind: "workspace", name: plan.workspace }} />
                     <span className="text-[10px] text-muted">new workspace</span>
                 </div>
@@ -230,7 +244,7 @@ function PlanTree({ plan }: { plan: BlueprintPlan }) {
                             }}
                         />
                     ) : (
-                        <span className="font-medium text-slate-700">this workspace</span>
+                        <span className="font-medium text-body">this workspace</span>
                     )}
                 </p>
             )}
@@ -238,10 +252,10 @@ function PlanTree({ plan }: { plan: BlueprintPlan }) {
             {plan.modules.map((moduleItem) => (
                 <div
                     key={moduleItem.name}
-                    className={plan.workspace ? "ml-3 border-l border-slate-200 pl-2.5" : ""}
+                    className={plan.workspace ? "ml-3 border-l border-hairline pl-2.5" : ""}
                 >
                     <div className="flex items-center gap-1.5">
-                        <LayoutGrid className="h-3 w-3 shrink-0 text-slate-400" />
+                        <LayoutGrid className="h-3 w-3 shrink-0 text-muted" />
                         <EntityChip mention={{ kind: "module", name: moduleItem.name }} />
                     </div>
 
@@ -334,7 +348,7 @@ export default function AgentChat({
      * what those names were.
      */
     const [known, setKnown] = useState<EntityRef[]>([]);
-    const [stage, setStage] = useState(STAGES[0].label);
+    const [thinkingWord, setThinkingWord] = useState(THINKING_WORDS[0]);
 
     const [sendAgentMessage, { isLoading }] = useSendAgentMessageMutation();
 
@@ -371,18 +385,20 @@ export default function AgentChat({
         endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }, [messages.length, isLoading]);
 
-    // Walk the stage labels while a turn is in flight, and reset when it lands.
+    // Cycle a thinking word while a turn is in flight. Starts on a random one so
+    // two turns in a row do not open with the same word, then walks the list.
     useEffect(() => {
         if (!isLoading) return;
 
-        const timers = STAGES.slice(1).map((step) =>
-            window.setTimeout(() => setStage(step.label), step.after)
-        );
+        let index = Math.floor(Math.random() * THINKING_WORDS.length);
+        setThinkingWord(THINKING_WORDS[index]);
 
-        return () => {
-            timers.forEach((timer) => window.clearTimeout(timer));
-            setStage(STAGES[0].label);
-        };
+        const id = window.setInterval(() => {
+            index = (index + 1) % THINKING_WORDS.length;
+            setThinkingWord(THINKING_WORDS[index]);
+        }, THINKING_INTERVAL_MS);
+
+        return () => window.clearInterval(id);
     }, [isLoading]);
 
     const rememberEntities = (entities?: EntityRef[]) => {
@@ -532,9 +548,9 @@ export default function AgentChat({
                             />
                         </span>
 
-                        <h3 className="text-sm font-bold text-slate-900">Aquiline</h3>
+                        <h3 className="text-sm font-bold text-foreground">Aquiline</h3>
                         <p className="mx-auto mt-2 max-w-[16rem] text-xs leading-relaxed text-muted">
-                            Say what you want to built Aquiline help to builds it. It asks before deleting anything.
+                            Tell Aquiline what you want to build and it builds it. It always asks before deleting anything.
                         </p>
 
                         <div className="mt-5 w-full space-y-1.5">
@@ -543,7 +559,7 @@ export default function AgentChat({
                                     key={suggestion}
                                     type="button"
                                     onClick={() => send(suggestion)}
-                                    className="w-full rounded-lg border border-hairline bg-control/30 px-3 py-2 text-left text-xs font-medium text-slate-600 transition hover:border-accent/40 hover:bg-control/60 hover:text-slate-900 cursor-pointer"
+                                    className="w-full rounded-lg border border-hairline bg-control/30 px-3 py-2 text-left text-xs font-medium text-body transition hover:border-foreground/20 hover:bg-control/60 hover:text-foreground cursor-pointer"
                                 >
                                     {suggestion}
                                 </button>
@@ -572,7 +588,7 @@ export default function AgentChat({
                                             chips can go back to their own
                                             colours now there is no coloured
                                             fill for them to fight. */}
-                                        <p className="max-w-[85%] rounded-2xl rounded-br-md bg-control/60 px-3 py-2 text-xs leading-relaxed text-slate-700">
+                                        <p className="max-w-[85%] rounded-2xl rounded-br-md bg-control/60 px-3 py-2 text-xs leading-relaxed text-body">
                                             {withChips(message.text, known)}
                                         </p>
 
@@ -621,7 +637,7 @@ export default function AgentChat({
                                     </span>
 
                                     <div className="min-w-0 max-w-[85%]">
-                                        <p className="rounded-2xl rounded-bl-md bg-control/60 px-3 py-2 text-xs leading-relaxed text-slate-700">
+                                        <p className="rounded-2xl rounded-bl-md bg-control/60 px-3 py-2 text-xs leading-relaxed text-body">
                                             {withChips(message.text, [
                                                 ...(message.mentions ?? []),
                                                 ...(message.actions ?? []),
@@ -641,9 +657,9 @@ export default function AgentChat({
                                         {/* Nothing destructive happens on a typed
                                             "yes" — it takes a deliberate press. */}
                                         {message.pending && !message.settled && (
-                                            <div className="mt-2 rounded-xl border border-slate-200 bg-card p-2.5">
-                                                <p className="mb-1.5 flex items-start gap-1.5 text-[11px] font-medium text-slate-700">
-                                                    <ShieldAlert className="mt-px h-3 w-3 shrink-0 text-accent" />
+                                            <div className="mt-2 rounded-xl border border-hairline bg-card p-2.5">
+                                                <p className="mb-1.5 flex items-start gap-1.5 text-[11px] font-medium text-body">
+                                                    <ShieldAlert className="mt-px h-3 w-3 shrink-0 text-amber-500" />
                                                     <span>{message.pending.intent}</span>
                                                 </p>
 
@@ -685,7 +701,7 @@ export default function AgentChat({
                                                         type="button"
                                                         onClick={() => authorise(message)}
                                                         disabled={authorising}
-                                                        className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                                                        className="inline-flex items-center gap-1.5 rounded-lg bg-foreground px-3 py-1.5 text-[11px] font-semibold text-card transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                                                     >
                                                         {authorising ? (
                                                             <Loader2 className="h-3 w-3 animate-spin" />
@@ -699,7 +715,7 @@ export default function AgentChat({
                                                         type="button"
                                                         onClick={() => dismiss(message)}
                                                         disabled={authorising}
-                                                        className="rounded-lg border border-slate-200 bg-card px-3 py-1.5 text-[11px] font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-50 cursor-pointer"
+                                                        className="rounded-lg border border-hairline bg-card px-3 py-1.5 text-[11px] font-medium text-body transition hover:bg-control disabled:opacity-50 cursor-pointer"
                                                     >
                                                         Cancel
                                                     </button>
@@ -759,8 +775,13 @@ export default function AgentChat({
                                 >
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                 </span>
-                                <p className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-control/60 px-3 py-2 text-xs text-muted">
-                                    <span>{stage}</span>
+                                <p className="flex items-center gap-1.5 rounded-2xl rounded-bl-md bg-control/60 px-3 py-2 text-xs text-muted">
+                                    <span
+                                        key={thinkingWord}
+                                        className="font-medium text-body animate-in fade-in slide-in-from-bottom-1 duration-500"
+                                    >
+                                        {thinkingWord}
+                                    </span>
                                     <span className="inline-flex gap-0.5">
                                         {[0, 1, 2].map((dot) => (
                                             <span
@@ -784,9 +805,9 @@ export default function AgentChat({
                 <div className="mb-2 flex items-center justify-between gap-2 px-1">
                     {context ? (
                         <span className="flex min-w-0 items-center gap-1.5">
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
                             <span className="truncate text-[10px] font-medium text-muted">
-                                Working on <span className="text-slate-700">{context}</span>
+                                Working on <span className="text-body">{context}</span>
                             </span>
                         </span>
                     ) : (
@@ -838,7 +859,7 @@ export default function AgentChat({
                                             ? "bg-red-600"
                                             : lowCredits
                                               ? "bg-amber-500"
-                                              : "bg-accent"
+                                              : "bg-foreground/70"
                                     }`}
                                     style={{
                                         width: `${Math.min(100, Math.max(0, (credits.remaining / Math.max(1, credits.allowance)) * 100))}%`
@@ -874,7 +895,7 @@ export default function AgentChat({
                         {credits.plan === "free" && (
                             <a
                                 href="/pricing"
-                                className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[10px] font-semibold text-white transition-colors hover:bg-accent-hover"
+                                className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-foreground px-3 py-1.5 text-[10px] font-semibold text-card transition hover:opacity-90"
                             >
                                 See plans
                             </a>
@@ -882,7 +903,7 @@ export default function AgentChat({
                     </div>
                 )}
 
-                <div className="rounded-xl border border-hairline bg-control/40 transition focus-within:border-accent focus-within:bg-card">
+                <div className="rounded-xl border border-hairline bg-control/40 transition focus-within:border-foreground focus-within:bg-card focus-within:ring-4 focus-within:ring-foreground/10">
                     <textarea
                         ref={inputRef}
                         rows={2}
@@ -900,7 +921,7 @@ export default function AgentChat({
                                 ? "Out of AI credits"
                                 : "Tell Aquiline what to build…"
                         }
-                        className="w-full resize-none bg-transparent px-3 pt-2.5 text-xs leading-relaxed text-slate-800 outline-none placeholder:text-muted"
+                        className="w-full resize-none bg-transparent px-3 pt-2.5 text-xs leading-relaxed text-body outline-none placeholder:text-muted"
                     />
 
                     <div className="flex items-center justify-between px-2 pb-2">
@@ -914,7 +935,7 @@ export default function AgentChat({
                             disabled={!draft.trim() || isLoading || outOfCredits}
                             aria-label="Send"
                             title="Send"
-                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-foreground text-card transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
                         >
                             {isLoading ? (
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

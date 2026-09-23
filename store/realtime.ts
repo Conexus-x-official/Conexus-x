@@ -45,7 +45,8 @@ export type ChangeEntity =
     | "presence"
     | "conversation"
     | "message"
-    | "typing";
+    | "typing"
+    | "notification";
 
 export type ChangeAction = "created" | "updated" | "deleted" | "moved";
 
@@ -70,7 +71,7 @@ export interface ChangeEvent {
 type Tags = TagDescription<
     | "Workspace" | "Member" | "Module" | "Collection" | "Column" | "Record"
     | "RecordValue" | "Amendment" | "Activity" | "Automation" | "ModuleAccess"
-    | "Conversation" | "Message"
+    | "Conversation" | "Message" | "Notification"
 >[];
 
 /**
@@ -451,6 +452,17 @@ export function applyChange(event: ChangeEvent, dispatch: AppDispatch): void {
         }
 
         /**
+         * Always delivered by `audience`, never a room (see the backend's
+         * SCOPE comment) — one person's own notification center. Invalidate
+         * rather than patch: the list is small and read rarely enough that a
+         * refetch is not worth a hand-written insert-and-resort.
+         */
+        case "notification": {
+            tags.push({ type: "Notification", id: "LIST" });
+            break;
+        }
+
+        /**
          * TYPING IS NEVER CACHED. It is worthless a second after it arrives, so
          * putting it in the store would mean writing and expiring redux state
          * on every keystroke of every participant. It is re-broadcast as a
@@ -490,7 +502,8 @@ export function resyncAfterReconnect(dispatch: AppDispatch): void {
         baseApi.util.invalidateTags([
             "Workspace", "Member", "Module", "Collection", "Column",
             "Record", "RecordValue", "Amendment", "Activity",
-            "Automation", "ModuleAccess", "Conversation", "Message"
+            "Automation", "ModuleAccess", "Conversation", "Message",
+            "Notification"
         ])
     );
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
     HiOutlineEllipsisVertical,
@@ -99,14 +100,16 @@ function formatExactDate(dateStr: string): string {
  * has met them elsewhere does not have to learn a second vocabulary.
  */
 const TABS = [
-    { value: "Workspace", label: "Workspace", icon: TbLayoutGrid },
-    { value: "Recently Visited", label: "Recently Visited", icon: TbHistory },
-    { value: "New Modules", label: "New Modules", icon: TbCards },
+    { value: "Workspace", label: "Workspace", icon: TbLayoutGrid, chip: "#6B7280" },
+    { value: "Recently Visited", label: "Recently Visited", icon: TbHistory, chip: "#3B82F6" },
+    { value: "New Modules", label: "New Modules", icon: TbCards, chip: "#8B5CF6" },
 ] as const;
 
 type TabValue = (typeof TABS)[number]["value"];
 
 const ITEMS_PER_PAGE = 10;
+
+const DATE_POPOVER_WIDTH = 256;
 
 /**
  * A date, relative in the row and exact in a popover.
@@ -115,6 +118,18 @@ const ITEMS_PER_PAGE = 10;
  * thirty-line blocks, which is how the two drift: a fix applied to one and not
  * the other. The open popover is keyed by the PARENT so only one is ever open
  * across the whole table, and so the shell's click-away can close it.
+ *
+ * PORTALLED to document.body, `position:fixed`, anchored off the trigger
+ * button's own rect — the same pattern BoardAccessMenu and the notification
+ * dropdown use. It used to be `absolute` inside a `<td className="relative
+ * z-1">`, which trapped it in that cell's OWN (low) stacking context: a
+ * table cell with `position:relative` establishes a stacking context, so the
+ * popover's z-20 was only ever compared against siblings WITHIN that cell,
+ * never against the Modules/Actions cells beside it — which is exactly why
+ * their content painted through the open popover. React portals still bubble
+ * through the REACT tree (not the DOM tree), so the existing click-away
+ * pattern (stopPropagation here, a catch-all onClick on the table's root div)
+ * keeps working with no extra listener needed.
  */
 function DateCell({
     id,
@@ -132,19 +147,37 @@ function DateCell({
     onOpen: (key: string | null) => void;
 }) {
     const isOpen = openKey === id;
+    const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+    const anchorRef = useRef<HTMLButtonElement>(null);
 
     const pill =
         tone === "blue"
             ? "bg-blue-50 text-blue-600"
             : "bg-emerald-50 text-emerald-600";
 
+    const toggle = () => {
+        if (!isOpen && anchorRef.current) {
+            const rect = anchorRef.current.getBoundingClientRect();
+            setPosition({
+                top: rect.bottom + 8,
+                left: Math.max(
+                    12,
+                    Math.min(rect.left, window.innerWidth - DATE_POPOVER_WIDTH - 12)
+                )
+            });
+        }
+
+        onOpen(isOpen ? null : id);
+    };
+
     return (
-        <td className="relative z-1 px-6 py-3 text-sm font-google-sans text-body">
+        <td className="px-4 py-2 text-sm font-google-sans text-body">
             <button
+                ref={anchorRef}
                 type="button"
                 onClick={(event) => {
                     event.stopPropagation();
-                    onOpen(isOpen ? null : id);
+                    toggle();
                 }}
                 title={formatExactDate(value)}
                 className="cursor-pointer text-body transition hover:text-foreground hover:underline"
@@ -152,29 +185,34 @@ function DateCell({
                 {formatRelative(value)}
             </button>
 
-            {isOpen && (
-                <div
-                    onClick={(event) => event.stopPropagation()}
-                    className="absolute left-6 top-12 z-20 w-64 rounded-xl border border-hairline bg-card p-3 text-xs font-google-sans shadow-lg animate-in fade-in zoom-in-95 duration-100"
-                >
-                    <div className="mb-1.5 flex items-center justify-between">
-                        <span className="font-semibold text-foreground">{heading}</span>
-                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${pill}`}>
-                            {tone === "blue" ? "Created" : "Updated"}
-                        </span>
-                    </div>
+            {isOpen &&
+                position &&
+                typeof document !== "undefined" &&
+                createPortal(
+                    <div
+                        onClick={(event) => event.stopPropagation()}
+                        style={{ top: position.top, left: position.left, width: DATE_POPOVER_WIDTH }}
+                        className="fixed z-50 rounded-xl border border-hairline bg-card p-3 text-xs font-google-sans shadow-lg animate-in fade-in zoom-in-95 duration-100"
+                    >
+                        <div className="mb-1.5 flex items-center justify-between">
+                            <span className="font-semibold text-foreground">{heading}</span>
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${pill}`}>
+                                {tone === "blue" ? "Created" : "Updated"}
+                            </span>
+                        </div>
 
-                    <p className="pt-1 font-medium text-body">{formatExactDate(value)}</p>
-                    <p className="pb-1 text-[11px] text-muted">{formatRelative(value)}</p>
-                </div>
-            )}
+                        <p className="pt-1 font-medium text-body">{formatExactDate(value)}</p>
+                        <p className="pb-1 text-[11px] text-muted">{formatRelative(value)}</p>
+                    </div>,
+                    document.body
+                )}
         </td>
     );
 }
 
 /** Shared column head styling — one declaration, both tables. */
 const HEAD_ROW =
-    "text-left [&>th]:px-6 [&>th]:py-3 [&>th]:text-[11px] [&>th]:font-semibold [&>th]:uppercase [&>th]:tracking-wider [&>th]:text-muted [&>th]:font-google-sans";
+    "text-left [&>th]:px-4 [&>th]:py-2 [&>th]:text-[11px] [&>th]:font-semibold [&>th]:uppercase [&>th]:tracking-wider [&>th]:text-muted [&>th]:font-google-sans";
 
 const ROW =
     "group cursor-pointer text-body transition hover:bg-control/50";
@@ -198,9 +236,9 @@ function NameCell({
     hint?: string;
 }) {
     return (
-        <td className="px-6 py-2.5">
-            <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-control text-body transition group-hover:bg-control-hover">
+        <td className="px-4 py-2">
+            <div className="flex items-center gap-2.5">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-control text-body transition group-hover:bg-control-hover">
                     {icon}
                 </span>
 
@@ -221,7 +259,7 @@ function NameCell({
 
 function CountCell({ value }: { value: number }) {
     return (
-        <td className="px-6 py-2.5 text-center">
+        <td className="px-4 py-2 text-center">
             <span
                 className={`inline-flex min-w-7 justify-center rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums ${value > 0
                     ? "bg-control text-foreground"
@@ -237,8 +275,13 @@ function CountCell({ value }: { value: number }) {
 function EmptyRow({ span, children }: { span: number; children: React.ReactNode }) {
     return (
         <tr>
-            <td colSpan={span} className="py-20 text-center text-sm text-muted font-google-sans">
-                {children}
+            <td colSpan={span} className="py-12">
+                <div className="flex flex-col items-center gap-2.5 text-center font-google-sans">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-control text-muted">
+                        <TbLayoutGrid className="h-5 w-5" />
+                    </span>
+                    <p className="max-w-xs text-sm text-muted">{children}</p>
+                </div>
             </td>
         </tr>
     );
@@ -392,17 +435,18 @@ export default function WorkspaceTable({ searchQuery = "" }: WorkspaceTableProps
             }}
         >
             {/*
-                Pills, not an underline.
+                Underline strip, matching the board's ViewTabs.
 
-                Selection and hover are the SAME treatment the sidebar uses —
-                .nav-glass for the selected row, a light neutral wash on hover —
-                so "you are here" looks identical wherever it appears. The glass
-                is deliberately the stronger of the two: hover is a flat wash,
-                selected adds the inset ring and top highlight on top of a
-                heavier fill, so the two can never be mistaken for each other.
+                Every label carries the same dark ink and weight — the ONLY
+                "you are here" signal is the 2px rule under the active tab, so
+                the row reads as one set of peers rather than one lit pill among
+                greyed-out siblings. Each tab's icon sits in its own solid
+                colour chip (a white high-stroke glyph on top), fixed hexes so a
+                tab looks identical in every theme; the chip dims when the tab is
+                not active.
             */}
-            <div className="flex shrink-0 items-center gap-1 px-6 py-2 select-none">
-                {TABS.map(({ value, label, icon: Icon }) => {
+            <div className="flex shrink-0 items-end gap-1 border-b border-hairline px-4 select-none">
+                {TABS.map(({ value, label, icon: Icon, chip }) => {
                     const isActive = activeTab === value;
 
                     return (
@@ -413,12 +457,17 @@ export default function WorkspaceTable({ searchQuery = "" }: WorkspaceTableProps
                                 setCurrentPage(1);
                             }}
                             aria-pressed={isActive}
-                            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium font-google-sans transition cursor-pointer ${isActive
-                                ? "nav-glass text-foreground"
-                                : "text-muted hover:bg-control/50 hover:text-foreground"
+                            className={`-mb-px flex items-center gap-1.5 border-b-2 px-2 py-2 text-[13px] font-bold font-google-sans text-foreground transition cursor-pointer ${isActive
+                                ? "border-foreground"
+                                : "border-transparent hover:border-slate-300"
                                 }`}
                         >
-                            <Icon className="h-4 w-4 shrink-0" />
+                            <span
+                                className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md"
+                                style={{ backgroundColor: chip }}
+                            >
+                                <Icon className="h-3 w-3 text-white" strokeWidth={2.5} />
+                            </span>
                             {label}
                         </button>
                     );
@@ -466,7 +515,7 @@ export default function WorkspaceTable({ searchQuery = "" }: WorkspaceTableProps
                                             name={module.name}
                                         />
 
-                                        <td className="px-6 py-2.5">
+                                        <td className="px-4 py-2">
                                             <span className="inline-flex max-w-[180px] items-center gap-1.5 truncate rounded-md bg-control px-2 py-1 text-[11px] font-medium text-body">
                                                 <WorkspaceIcon
                                                     iconKey={
@@ -545,7 +594,7 @@ export default function WorkspaceTable({ searchQuery = "" }: WorkspaceTableProps
 
                                             {activeTab === "Recently Visited" ? (
                                                 <td
-                                                    className="px-6 py-2.5 text-sm font-google-sans text-body"
+                                                    className="px-4 py-2 text-sm font-google-sans text-body"
                                                     title={
                                                         visited
                                                             ? formatExactDate(new Date(visited).toISOString())
@@ -584,7 +633,7 @@ export default function WorkspaceTable({ searchQuery = "" }: WorkspaceTableProps
 
                                             <CountCell value={workspace.totalModules ?? 0} />
 
-                                            <td className="px-6 py-2.5 text-center">
+                                            <td className="px-4 py-2 text-center">
                                                 <div className="relative inline-block text-left">
                                                     <button
                                                         type="button"
@@ -622,7 +671,7 @@ export default function WorkspaceTable({ searchQuery = "" }: WorkspaceTableProps
             </div>
 
             {/* Pagination Footer */}
-            <div className="shrink-0 border-t border-hairline px-6 py-3">
+            <div className="shrink-0 border-t border-hairline px-4 py-2">
                 <div className="flex items-center justify-between">
                     <p className="text-sm text-muted font-google-sans">
                         Showing{" "}
@@ -637,7 +686,7 @@ export default function WorkspaceTable({ searchQuery = "" }: WorkspaceTableProps
                             onClick={() => setCurrentPage(Math.max(safePage - 1, 1))}
                             disabled={safePage === 1}
                             aria-label="Previous page"
-                            className="flex h-9 w-9 items-center justify-center rounded-md text-muted transition hover:bg-control hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed"
+                            className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition hover:bg-control hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed"
                         >
                             <HiOutlineChevronLeft className="h-4 w-4" strokeWidth={2.5} />
                         </button>
@@ -661,7 +710,7 @@ export default function WorkspaceTable({ searchQuery = "" }: WorkspaceTableProps
                                     <button
                                         onClick={() => setCurrentPage(page)}
                                         aria-current={safePage === page ? "page" : undefined}
-                                        className={`h-9 min-w-9 rounded-md px-2 text-sm font-medium font-google-sans transition cursor-pointer ${safePage === page
+                                        className={`h-8 min-w-8 rounded-md px-2 text-sm font-medium font-google-sans transition cursor-pointer ${safePage === page
                                             ? "nav-glass text-foreground"
                                             : "text-body hover:bg-control"
                                             }`}
@@ -675,7 +724,7 @@ export default function WorkspaceTable({ searchQuery = "" }: WorkspaceTableProps
                             onClick={() => setCurrentPage(Math.min(safePage + 1, totalPages))}
                             disabled={safePage === totalPages}
                             aria-label="Next page"
-                            className="flex h-9 w-9 items-center justify-center rounded-md text-muted transition hover:bg-control hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed"
+                            className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition hover:bg-control hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed"
                         >
                             <HiOutlineChevronRight className="h-4 w-4" strokeWidth={2.5} />
                         </button>

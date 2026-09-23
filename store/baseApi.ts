@@ -66,7 +66,11 @@ export const baseApi = createApi({
         "Conversation",
         "Message",
         // The signed-in account's AI spending balance.
-        "AiCredits"
+        "AiCredits",
+        // The signed-in account's notification center.
+        "Notification",
+        // A module's public, shareable form config.
+        "Form"
     ],
 
     keepUnusedDataFor: 120,        // seconds a cache entry survives with no subscriber

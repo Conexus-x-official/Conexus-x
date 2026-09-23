@@ -69,12 +69,14 @@ export const amendmentsApi = baseApi.injectEndpoints({
                 collectionId?: string;
                 /** Set when the row is a sub-record — see patchCount. */
                 parentRecordId?: string | null;
+                /** User ids picked via @-autocomplete — see GrowingTextarea. */
+                mentions?: string[];
             }
         >({
-            query: ({ recordId, message, parentComment }) => ({
+            query: ({ recordId, message, parentComment, mentions }) => ({
                 url: `/amendments/${recordId}`,
                 method: "POST",
-                body: { message, parentComment }
+                body: { message, parentComment, mentions }
             }),
             transformResponse: (response: { amendment: RecordAmendment }) =>
                 response.amendment,
