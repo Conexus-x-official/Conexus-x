@@ -118,7 +118,7 @@ export default function RegisterPage() {
 
         try {
             const response = await fetch(
-                `${env.NEXT_PUBLIC_API_URL}/api/auth/register`,
+                `${env.NEXT_PUBLIC_API_URL}/auth/register`,
                 {
                     method: "POST",
                     headers: {

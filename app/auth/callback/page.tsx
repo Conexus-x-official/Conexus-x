@@ -56,7 +56,7 @@ export default function GoogleCallbackPage() {
             if (failure || !token) {
                 setError(
                     ERROR_MESSAGES[failure ?? ""] ??
-                        "We couldn't complete Google sign-in. Please try again."
+                    "We couldn't complete Google sign-in. Please try again."
                 );
                 return;
             }

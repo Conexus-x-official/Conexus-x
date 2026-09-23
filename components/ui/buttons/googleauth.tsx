@@ -33,7 +33,7 @@ export default function GoogleButton({
         setRedirecting(true);
 
         // Full page navigation: the backend owns the Google handshake and the client secret.
-        window.location.href = `${baseUrl.replace(/\/$/, "")}/api/auth/google?mode=${mode}`;
+        window.location.href = `${baseUrl.replace(/\/$/, "")}/auth/google?mode=${mode}`;
     };
 
     const isBusy = disabled || redirecting;
