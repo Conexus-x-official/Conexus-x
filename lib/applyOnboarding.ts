@@ -16,10 +16,7 @@ import type { OnboardingAnswers } from "./onboarding";
  * every one of them is fetched fresh on the next page.
  */
 
-const base = (env.NEXT_PUBLIC_API_URL ?? "http://localhost:4040/api").replace(
-    /\/$/,
-    ""
-);
+const base = `${(env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")}/api`;
 
 const authHeaders = (token: string) => ({
     "Content-Type": "application/json",

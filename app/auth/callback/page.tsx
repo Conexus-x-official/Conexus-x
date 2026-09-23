@@ -64,7 +64,7 @@ export default function GoogleCallbackPage() {
             try {
                 const baseUrl = (env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
-                const response = await fetch(`${baseUrl}/auth/me`, {
+                const response = await fetch(`${baseUrl}/api/auth/me`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
 

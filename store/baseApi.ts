@@ -26,7 +26,7 @@ export const baseApi = createApi({
     reducerPath: "api",
 
     baseQuery: fetchBaseQuery({
-        baseUrl: (env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, ""),
+        baseUrl: `${(env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")}/api`,
         prepareHeaders: (headers) => {
             const token = getToken();
             if (token) {

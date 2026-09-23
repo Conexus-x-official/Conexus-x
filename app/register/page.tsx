@@ -118,7 +118,7 @@ export default function RegisterPage() {
 
         try {
             const response = await fetch(
-                `${env.NEXT_PUBLIC_API_URL}/auth/register`,
+                `${env.NEXT_PUBLIC_API_URL}/api/auth/register`,
                 {
                     method: "POST",
                     headers: {
@@ -237,7 +237,7 @@ export default function RegisterPage() {
 
         try {
             const response = await fetch(
-                `${env.NEXT_PUBLIC_API_URL}/auth/verify-otp`,
+                `${env.NEXT_PUBLIC_API_URL}/api/auth/verify-otp`,
                 {
                     method: "POST",
                     headers: {
@@ -296,7 +296,7 @@ export default function RegisterPage() {
 
         try {
             const response = await fetch(
-                `${env.NEXT_PUBLIC_API_URL}/auth/resend-otp`,
+                `${env.NEXT_PUBLIC_API_URL}/api/auth/resend-otp`,
                 {
                     method: "POST",
                     headers: {
@@ -355,7 +355,7 @@ export default function RegisterPage() {
     };
 
     const handleOAuth = (provider: "apple") => {
-        window.location.href = `${env.NEXT_PUBLIC_API_URL}/auth/${provider}`;
+        window.location.href = `${env.NEXT_PUBLIC_API_URL}/api/auth/${provider}`;
     };
 
     /**
